@@ -53,3 +53,6 @@ Thumbs.db
 
 # User-specific files (users should copy from templates)
 core/user.md
+
+# Environment
+.env
