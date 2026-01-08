@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hardware Savings Calculator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+      <header class="mb-8">
+        <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Hardware Savings Calculator</h1>
+        <p class="mt-2 text-sm text-slate-600">
+          Compare smart AI cameras vs one Sighthound Compute Node plus standard IP cameras.
+        </p>
+      </header>
+
+      <section class="mb-6 rounded-xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-base font-semibold text-slate-900">Your setup</h2>
+        <form id="calculator-form" class="mt-4 space-y-5" novalidate>
+          <div>
+            <label for="totalCameras" class="block text-sm font-medium text-slate-900">
+              Total cameras
+            </label>
+            <p class="mt-1 text-xs text-slate-600">
+              Enter your total camera count. We’ll automatically calculate how many Compute Nodes you need (4 cameras per node).
+            </p>
+            <div class="mt-2">
+              <input
+                type="number"
+                id="totalCameras"
+                name="totalCameras"
+                min="1"
+                max="10000"
+                step="1"
+                placeholder="e.g., 14"
+                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
+              />
+            </div>
+            <p class="mt-1 text-xs text-slate-500">Value must be a whole number between 1 and 10,000.</p>
+          </div>
+
+          <div>
+            <label for="smartCameraCost" class="block text-sm font-medium text-slate-900">
+              Cost per smart AI camera
+            </label>
+            <p class="mt-1 text-xs text-slate-600">
+              What you’d pay for a camera with built-in AI (often called an “edge AI” or “smart” camera).
+            </p>
+            <div class="mt-2 relative rounded-md shadow-sm">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <span class="text-slate-500 text-sm">$</span>
+              </div>
+              <input
+                type="number"
+                id="smartCameraCost"
+                name="smartCameraCost"
+                min="1"
+                max="10000"
+                step="0.01"
+                placeholder="3000"
+                class="block w-full rounded-md border-slate-300 bg-white pl-7 pr-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
+              />
+            </div>
+            <p class="mt-1 text-xs text-slate-500">Leave blank to use the default of $3,000.00.</p>
+          </div>
+
+          <div>
+            <label for="dumbCameraCost" class="block text-sm font-medium text-slate-900">
+              Cost per standard IP camera
+            </label>
+            <p class="mt-1 text-xs text-slate-600">
+              A regular IP camera that streams video. The Compute Node handles the AI.
+            </p>
+            <div class="mt-2 relative rounded-md shadow-sm">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <span class="text-slate-500 text-sm">$</span>
+              </div>
+              <input
+                type="number"
+                id="dumbCameraCost"
+                name="dumbCameraCost"
+                min="1"
+                max="10000"
+                step="0.01"
+                placeholder="250"
+                class="block w-full rounded-md border-slate-300 bg-white pl-7 pr-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
+              />
+            </div>
+            <p class="mt-1 text-xs text-slate-500">Leave blank to use the default of $250.00.</p>
+          </div>
+
+          <p id="error" class="text-sm text-red-600" aria-live="polite"></p>
+
+          <div class="pt-1">
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+            >
+              Calculate savings
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="mb-6 rounded-xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-base font-semibold text-slate-900">Assumptions (locked)</h2>
+        <ul class="mt-3 space-y-1 text-sm text-slate-700">
+          <li>Cameras per Compute Node: 4</li>
+          <li>Compute Node cost: $3,500 (fixed)</li>
+        </ul>
+        <p class="mt-3 text-xs text-slate-500">Nodes required = ceiling(total cameras ÷ 4).</p>
+      </section>
+
+      <section
+        id="resultsSection"
+        class="rounded-xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200"
+        aria-live="polite"
+      >
+        <h2 class="text-base font-semibold text-slate-900">Results</h2>
+
+        <p id="resultsPlaceholder" class="mt-3 text-sm text-slate-600">
+          Enter your camera count to see the savings.
+        </p>
+
+        <div id="resultsCards" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 hidden">
+          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 class="text-sm font-medium text-slate-900">Nodes required</h3>
+            <p class="mt-1 text-xs text-slate-600">Based on 4 cameras per node.</p>
+            <p id="nodesNeeded" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">0</p>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 class="text-sm font-medium text-slate-900">Total hardware cost today</h3>
+            <p class="mt-1 text-xs text-slate-600">Smart cameras only.</p>
+            <p id="currentTotal" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">$0.00</p>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 class="text-sm font-medium text-slate-900">Total hardware cost with Sighthound</h3>
+            <p class="mt-1 text-xs text-slate-600">Compute Nodes plus standard IP cameras.</p>
+            <p id="sighthoundTotal" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">$0.00</p>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 id="savingsLabel" class="text-sm font-medium text-slate-900">Immediate savings</h3>
+            <p class="mt-1 text-xs text-slate-600">Today’s cost minus Sighthound cost.</p>
+            <p id="savings" class="mt-3 text-2xl font-semibold tabular-nums text-emerald-600">$0.00</p>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 class="text-sm font-medium text-slate-900">Percent reduction</h3>
+            <p class="mt-1 text-xs text-slate-600">Relative to today’s hardware cost.</p>
+            <p id="percentReduction" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">0.0%</p>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
+            <h3 class="text-sm font-medium text-slate-900">Cost per camera</h3>
+            <div class="mt-2 space-y-1 text-sm">
+              <div class="flex items-baseline justify-between">
+                <span class="text-slate-600">Before</span>
+                <span id="costPerCameraBefore" class="tabular-nums text-slate-900">$0.00</span>
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-slate-600">After</span>
+                <span id="costPerCameraAfter" class="tabular-nums text-slate-900">$0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-4 text-xs text-slate-500">
+          Hardware-only estimate. Prices vary by vendor and volume.
+        </p>
+      </section>
+
+      <p class="mt-6 text-[11px] text-slate-400">
+        Hardware-only estimate. Prices vary by vendor and volume.
+      </p>
+
+      <script src="script.js"></script>
+    </main>
+  </body>
+</html>
