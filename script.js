@@ -144,6 +144,7 @@ if (typeof document !== 'undefined') {
   const form = document.getElementById('calculator-form');
   const errorEl = document.getElementById('error');
 
+  // Results DOM elements
   const currentTotalEl = document.getElementById('currentTotal');
   const sighthoundTotalEl = document.getElementById('sighthoundTotal');
   const savingsEl = document.getElementById('savings');
@@ -152,12 +153,21 @@ if (typeof document !== 'undefined') {
   const costPerCameraAfterEl = document.getElementById('costPerCameraAfter');
   const nodesNeededEl = document.getElementById('nodesNeeded');
 
+  const todayBreakdownEl = document.getElementById('todayBreakdown');
+  const sighthoundNodesBreakdownEl = document.getElementById('sighthoundNodesBreakdown');
+  const sighthoundCamerasBreakdownEl = document.getElementById('sighthoundCamerasBreakdown');
+
+  const primaryArrowEl = document.getElementById('primaryArrow');
+  const percentArrowEl = document.getElementById('percentArrow');
+
   const resultsPlaceholderEl = document.getElementById('resultsPlaceholder');
   const resultsCardsEl = document.getElementById('resultsCards');
   const savingsLabelEl = document.getElementById('savingsLabel');
 
   function showError(message) {
-    errorEl.textContent = message || '';
+    if (errorEl) {
+      errorEl.textContent = message || '';
+    }
   }
 
   function showPlaceholder() {
@@ -174,65 +184,110 @@ if (typeof document !== 'undefined') {
     }
   }
 
-  form.addEventListener('submit', function (event) {
-    event.preventDefault();
-    showError('');
+  if (form) {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      showError('');
 
-    const totalCamerasRaw = form.totalCameras.value.trim();
-    const smartCameraRaw = form.smartCameraCost.value;
-    const dumbCameraRaw = form.dumbCameraCost.value;
+      const totalCamerasRaw = form.totalCameras.value.trim();
+      const smartCameraRaw = form.smartCameraCost.value;
+      const dumbCameraRaw = form.dumbCameraCost.value;
 
-    const result = computeTotalsFromRaw({
-      totalCamerasRaw,
-      smartCameraCostRaw: smartCameraRaw,
-      dumbCameraCostRaw: dumbCameraRaw,
-    });
+      const result = computeTotalsFromRaw({
+        totalCamerasRaw,
+        smartCameraCostRaw: smartCameraRaw,
+        dumbCameraCostRaw: dumbCameraRaw,
+      });
 
-    if (!result.ok) {
-      if (result.reason === 'emptyTotalCameras') {
+      if (!result.ok) {
+        if (result.reason === 'emptyTotalCameras') {
+          showPlaceholder();
+          return;
+        }
+
+        if (result.errorMessage) {
+          showError(result.errorMessage);
+        }
         showPlaceholder();
         return;
       }
 
-      if (result.errorMessage) {
-        showError(result.errorMessage);
+      const {
+        totalCameras,
+        smartCameraCost,
+        dumbCameraCost,
+        nodesNeeded,
+        currentTotal,
+        sighthoundTotal,
+        savings,
+        percentReduction,
+        costPerCameraBefore,
+        costPerCameraAfter,
+      } = result.values;
+
+      // Update main totals
+      if (nodesNeededEl) nodesNeededEl.textContent = nodesNeeded.toString();
+      if (currentTotalEl) currentTotalEl.textContent = formatCurrency(currentTotal);
+      if (sighthoundTotalEl) sighthoundTotalEl.textContent = formatCurrency(sighthoundTotal);
+
+      // Primary callout uses absolute savings amount
+      const savingsDisplay = Math.abs(savings);
+      if (savingsEl) savingsEl.textContent = formatCurrency(savingsDisplay);
+
+      if (percentReductionEl) percentReductionEl.textContent = formatPercent(percentReduction);
+      if (costPerCameraBeforeEl) costPerCameraBeforeEl.textContent = formatCurrency(costPerCameraBefore);
+      if (costPerCameraAfterEl) costPerCameraAfterEl.textContent = formatCurrency(costPerCameraAfter);
+
+      // Comparison breakdown lines
+      if (todayBreakdownEl) {
+        todayBreakdownEl.textContent = `Cameras: ${totalCameras} × ${formatCurrency(smartCameraCost)}`;
       }
-      showPlaceholder();
-      return;
-    }
+      if (sighthoundNodesBreakdownEl) {
+        sighthoundNodesBreakdownEl.textContent = `Nodes: ${nodesNeeded} × ${formatCurrency(NODE_COST)}`;
+      }
+      if (sighthoundCamerasBreakdownEl) {
+        sighthoundCamerasBreakdownEl.textContent = `Cameras: ${totalCameras} × ${formatCurrency(dumbCameraCost)}`;
+      }
 
-    const {
-      nodesNeeded,
-      currentTotal,
-      sighthoundTotal,
-      savings,
-      percentReduction,
-      costPerCameraBefore,
-      costPerCameraAfter,
-    } = result.values;
+      // Update savings label, color, and arrow based on sign
+      if (savingsLabelEl && savingsEl && primaryArrowEl) {
+        if (savings < 0) {
+          savingsLabelEl.textContent = 'Extra cost';
+          savingsEl.classList.remove('text-emerald-400');
+          savingsEl.classList.add('text-red-400');
+          primaryArrowEl.textContent = '↑';
+          primaryArrowEl.classList.remove('text-emerald-400');
+          primaryArrowEl.classList.add('text-red-400');
+        } else {
+          savingsLabelEl.textContent = 'Immediate savings';
+          savingsEl.classList.remove('text-red-400');
+          savingsEl.classList.add('text-emerald-400');
+          primaryArrowEl.textContent = '↓';
+          primaryArrowEl.classList.remove('text-red-400');
+          primaryArrowEl.classList.add('text-emerald-400');
+        }
+      }
 
-    // Update UI
-    nodesNeededEl.textContent = nodesNeeded.toString();
-    currentTotalEl.textContent = formatCurrency(currentTotal);
-    sighthoundTotalEl.textContent = formatCurrency(sighthoundTotal);
-    savingsEl.textContent = formatCurrency(savings);
-    percentReductionEl.textContent = formatPercent(percentReduction);
-    costPerCameraBeforeEl.textContent = formatCurrency(costPerCameraBefore);
-    costPerCameraAfterEl.textContent = formatCurrency(costPerCameraAfter);
+      // Percent reduction arrow and color
+      if (percentReductionEl && percentArrowEl) {
+        if (percentReduction < 0) {
+          percentReductionEl.classList.remove('text-emerald-600');
+          percentReductionEl.classList.add('text-red-600');
+          percentArrowEl.textContent = '↑';
+          percentArrowEl.classList.remove('text-emerald-600');
+          percentArrowEl.classList.add('text-red-600');
+        } else {
+          percentReductionEl.classList.remove('text-red-600');
+          percentReductionEl.classList.add('text-emerald-600');
+          percentArrowEl.textContent = '↓';
+          percentArrowEl.classList.remove('text-red-600');
+          percentArrowEl.classList.add('text-emerald-600');
+        }
+      }
 
-    // Update savings label and color based on sign
-    if (savings < 0) {
-      savingsLabelEl.textContent = 'Extra cost';
-      savingsEl.classList.remove('text-emerald-600');
-      savingsEl.classList.add('text-red-600');
-    } else {
-      savingsLabelEl.textContent = 'Immediate savings';
-      savingsEl.classList.remove('text-red-600');
-      savingsEl.classList.add('text-emerald-600');
-    }
-
-    showResults();
-  });
+      showResults();
+    });
+  }
 }
 
 // Export pure helpers for unit testing in Node.

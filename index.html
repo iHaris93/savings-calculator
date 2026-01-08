@@ -7,178 +7,294 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
-    <main class="max-w-3xl mx-auto px-4 py-10">
-      <header class="mb-8">
-        <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Hardware Savings Calculator</h1>
-        <p class="mt-2 text-sm text-slate-600">
-          Compare smart AI cameras vs one Sighthound Compute Node plus standard IP cameras.
-        </p>
-      </header>
-
-      <section class="mb-6 rounded-xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-base font-semibold text-slate-900">Your setup</h2>
-        <form id="calculator-form" class="mt-4 space-y-5" novalidate>
-          <div>
-            <label for="totalCameras" class="block text-sm font-medium text-slate-900">
-              Total cameras
-            </label>
-            <p class="mt-1 text-xs text-slate-600">
-              Enter your total camera count. We’ll automatically calculate how many Compute Nodes you need (4 cameras per node).
-            </p>
-            <div class="mt-2">
-              <input
-                type="number"
-                id="totalCameras"
-                name="totalCameras"
-                min="1"
-                max="10000"
-                step="1"
-                placeholder="e.g., 14"
-                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
-              />
-            </div>
-            <p class="mt-1 text-xs text-slate-500">Value must be a whole number between 1 and 10,000.</p>
-          </div>
-
-          <div>
-            <label for="smartCameraCost" class="block text-sm font-medium text-slate-900">
-              Cost per smart AI camera
-            </label>
-            <p class="mt-1 text-xs text-slate-600">
-              What you’d pay for a camera with built-in AI (often called an “edge AI” or “smart” camera).
-            </p>
-            <div class="mt-2 relative rounded-md shadow-sm">
-              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span class="text-slate-500 text-sm">$</span>
-              </div>
-              <input
-                type="number"
-                id="smartCameraCost"
-                name="smartCameraCost"
-                min="1"
-                max="10000"
-                step="0.01"
-                placeholder="3000"
-                class="block w-full rounded-md border-slate-300 bg-white pl-7 pr-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
-              />
-            </div>
-            <p class="mt-1 text-xs text-slate-500">Leave blank to use the default of $3,000.00.</p>
-          </div>
-
-          <div>
-            <label for="dumbCameraCost" class="block text-sm font-medium text-slate-900">
-              Cost per standard IP camera
-            </label>
-            <p class="mt-1 text-xs text-slate-600">
-              A regular IP camera that streams video. The Compute Node handles the AI.
-            </p>
-            <div class="mt-2 relative rounded-md shadow-sm">
-              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span class="text-slate-500 text-sm">$</span>
-              </div>
-              <input
-                type="number"
-                id="dumbCameraCost"
-                name="dumbCameraCost"
-                min="1"
-                max="10000"
-                step="0.01"
-                placeholder="250"
-                class="block w-full rounded-md border-slate-300 bg-white pl-7 pr-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
-              />
-            </div>
-            <p class="mt-1 text-xs text-slate-500">Leave blank to use the default of $250.00.</p>
-          </div>
-
-          <p id="error" class="text-sm text-red-600" aria-live="polite"></p>
-
-          <div class="pt-1">
-            <button
-              type="submit"
-              class="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
-            >
-              Calculate savings
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section class="mb-6 rounded-xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-base font-semibold text-slate-900">Assumptions (locked)</h2>
-        <ul class="mt-3 space-y-1 text-sm text-slate-700">
-          <li>Cameras per Compute Node: 4</li>
-          <li>Compute Node cost: $3,500 (fixed)</li>
-        </ul>
-        <p class="mt-3 text-xs text-slate-500">Nodes required = ceiling(total cameras ÷ 4).</p>
-      </section>
-
-      <section
-        id="resultsSection"
-        class="rounded-xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200"
-        aria-live="polite"
-      >
-        <h2 class="text-base font-semibold text-slate-900">Results</h2>
-
-        <p id="resultsPlaceholder" class="mt-3 text-sm text-slate-600">
-          Enter your camera count to see the savings.
-        </p>
-
-        <div id="resultsCards" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 hidden">
-          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 class="text-sm font-medium text-slate-900">Nodes required</h3>
-            <p class="mt-1 text-xs text-slate-600">Based on 4 cameras per node.</p>
-            <p id="nodesNeeded" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">0</p>
-          </div>
-
-          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 class="text-sm font-medium text-slate-900">Total hardware cost today</h3>
-            <p class="mt-1 text-xs text-slate-600">Smart cameras only.</p>
-            <p id="currentTotal" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">$0.00</p>
-          </div>
-
-          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 class="text-sm font-medium text-slate-900">Total hardware cost with Sighthound</h3>
-            <p class="mt-1 text-xs text-slate-600">Compute Nodes plus standard IP cameras.</p>
-            <p id="sighthoundTotal" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">$0.00</p>
-          </div>
-
-          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 id="savingsLabel" class="text-sm font-medium text-slate-900">Immediate savings</h3>
-            <p class="mt-1 text-xs text-slate-600">Today’s cost minus Sighthound cost.</p>
-            <p id="savings" class="mt-3 text-2xl font-semibold tabular-nums text-emerald-600">$0.00</p>
-          </div>
-
-          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 class="text-sm font-medium text-slate-900">Percent reduction</h3>
-            <p class="mt-1 text-xs text-slate-600">Relative to today’s hardware cost.</p>
-            <p id="percentReduction" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">0.0%</p>
-          </div>
-
-          <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
-            <h3 class="text-sm font-medium text-slate-900">Cost per camera</h3>
-            <div class="mt-2 space-y-1 text-sm">
-              <div class="flex items-baseline justify-between">
-                <span class="text-slate-600">Before</span>
-                <span id="costPerCameraBefore" class="tabular-nums text-slate-900">$0.00</span>
-              </div>
-              <div class="flex items-baseline justify-between">
-                <span class="text-slate-600">After</span>
-                <span id="costPerCameraAfter" class="tabular-nums text-slate-900">$0.00</span>
-              </div>
+    <div class="min-h-screen">
+      <!-- Top header / branding -->
+      <header class="border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 lg:py-5">
+          <div class="flex items-center gap-3">
+            <img
+              src="/assets/sighthound-logo.png"
+              alt="Sighthound"
+              class="h-8 w-auto shrink-0"
+              onerror="this.style.display='none'"
+            />
+            <div>
+              <h1 class="text-lg font-semibold tracking-tight text-slate-900 lg:text-xl">
+                Hardware Savings Calculator
+              </h1>
+              <p class="text-xs text-slate-600 lg:text-sm">
+                Smart cameras vs Compute Node + IP cameras
+              </p>
             </div>
           </div>
         </div>
+      </header>
 
-        <p class="mt-4 text-xs text-slate-500">
-          Hardware-only estimate. Prices vary by vendor and volume.
-        </p>
-      </section>
+      <main class="mx-auto max-w-6xl px-4 py-8 lg:py-10">
+        <div class="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <!-- LEFT COLUMN: Inputs + assumptions -->
+          <div class="space-y-6">
+            <section class="rounded-2xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200/80">
+              <h2 class="text-base font-semibold text-slate-900">Your setup</h2>
+              <p class="mt-1 text-sm text-slate-600">
+                Enter your current camera costs. We’ll do the math.
+              </p>
 
-      <p class="mt-6 text-[11px] text-slate-400">
-        Hardware-only estimate. Prices vary by vendor and volume.
-      </p>
+              <form id="calculator-form" class="mt-5 space-y-5" novalidate>
+                <!-- Total cameras -->
+                <div>
+                  <label for="totalCameras" class="block text-sm font-medium text-slate-900">
+                    Total cameras
+                  </label>
+                  <p class="mt-1 text-xs text-slate-600">
+                    Enter your total camera count. We’ll automatically calculate how many Compute Nodes you need (4 cameras per
+                    node).
+                  </p>
+                  <div class="mt-2">
+                    <input
+                      type="number"
+                      id="totalCameras"
+                      name="totalCameras"
+                      min="1"
+                      max="10000"
+                      step="1"
+                      placeholder="e.g., 14"
+                      class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                    />
+                  </div>
+                  <p class="mt-1 text-xs text-slate-500">Enter a whole number between 1 and 10,000.</p>
+                </div>
 
-      <script src="script.js"></script>
-    </main>
+                <!-- Cost per smart AI camera -->
+                <div>
+                  <label for="smartCameraCost" class="block text-sm font-medium text-slate-900">
+                    Cost per smart AI camera
+                  </label>
+                  <p class="mt-1 text-xs text-slate-600">
+                    What you’d pay for a camera with built-in AI (often called an “edge AI” or “smart” camera).
+                  </p>
+                  <div class="relative mt-2 rounded-md shadow-sm">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <span class="text-sm text-slate-500">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      id="smartCameraCost"
+                      name="smartCameraCost"
+                      min="1"
+                      max="10000"
+                      step="0.01"
+                      placeholder="3000"
+                      class="block w-full rounded-md border-slate-300 bg-white py-2 pl-7 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                    />
+                  </div>
+                  <p class="mt-1 text-xs text-slate-500">Enter a value between $1.00 and $10,000.00.</p>
+                </div>
+
+                <!-- Cost per standard IP camera -->
+                <div>
+                  <label for="dumbCameraCost" class="block text-sm font-medium text-slate-900">
+                    Cost per standard IP camera
+                  </label>
+                  <p class="mt-1 text-xs text-slate-600">
+                    A regular IP camera that streams video. The Compute Node handles the AI.
+                  </p>
+                  <div class="relative mt-2 rounded-md shadow-sm">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <span class="text-sm text-slate-500">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      id="dumbCameraCost"
+                      name="dumbCameraCost"
+                      min="1"
+                      max="10000"
+                      step="0.01"
+                      placeholder="250"
+                      class="block w-full rounded-md border-slate-300 bg-white py-2 pl-7 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                    />
+                  </div>
+                  <p class="mt-1 text-xs text-slate-500">Enter a value between $1.00 and $10,000.00.</p>
+                </div>
+
+                <!-- Validation error -->
+                <p id="error" class="text-sm text-red-600" aria-live="polite"></p>
+
+                <div class="pt-1">
+                  <button
+                    type="submit"
+                    class="inline-flex w-full items-center justify-center rounded-md bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:w-auto"
+                  >
+                    Calculate savings
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <!-- Locked assumptions -->
+            <section class="rounded-2xl bg-slate-50 p-5 text-sm shadow-sm ring-1 ring-slate-200/80">
+              <h3 class="text-sm font-semibold text-slate-900">Assumptions (locked)</h3>
+              <dl class="mt-3 space-y-1 text-slate-700">
+                <div class="flex items-baseline justify-between gap-4">
+                  <dt class="text-xs text-slate-500">Cameras per Compute Node</dt>
+                  <dd class="tabular-nums">4</dd>
+                </div>
+                <div class="flex items-baseline justify-between gap-4">
+                  <dt class="text-xs text-slate-500">Compute Node cost</dt>
+                  <dd class="tabular-nums">$3,500 (fixed)</dd>
+                </div>
+              </dl>
+              <p class="mt-3 text-xs text-slate-500">Nodes required = ceiling(total cameras ÷ 4).</p>
+            </section>
+          </div>
+
+          <!-- RIGHT COLUMN: Results + CTA -->
+          <div class="space-y-6">
+            <!-- Results card -->
+            <section
+              id="resultsSection"
+              class="rounded-2xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200/80"
+              aria-live="polite"
+            >
+              <h2 class="text-base font-semibold text-slate-900">Results</h2>
+
+              <!-- Empty state -->
+              <p id="resultsPlaceholder" class="mt-3 text-sm text-slate-600">
+                Enter your camera count to see the savings.
+              </p>
+
+              <!-- Results content -->
+              <div id="resultsCards" class="mt-5 space-y-6 hidden">
+                <!-- Primary callout -->
+                <div class="rounded-xl bg-[#10152f] px-5 py-4 text-slate-50 shadow-sm">
+                  <p id="savingsLabel" class="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    Immediate savings
+                  </p>
+                  <div class="mt-2 flex items-baseline gap-3">
+                    <p id="savings" class="text-3xl font-semibold tabular-nums text-emerald-400 sm:text-4xl">
+                      $0.00
+                    </p>
+                    <span id="primaryArrow" class="text-2xl leading-none text-emerald-400">↓</span>
+                  </div>
+                  <p class="mt-1 text-xs text-slate-300">Hardware-only estimate.</p>
+                </div>
+
+                <!-- Comparison block -->
+                <div class="rounded-xl border border-slate-200/80 bg-white/60 p-5">
+                  <div class="grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Today</h3>
+                      <p id="currentTotal" class="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
+                        $0.00
+                      </p>
+                      <p id="todayBreakdown" class="mt-1 text-xs text-slate-600">
+                        Cameras: 0 × $0.00
+                      </p>
+                    </div>
+                    <div class="border-t border-slate-200/80 pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+                      <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sighthound</h3>
+                      <p id="sighthoundTotal" class="mt-2 text-2xl font-semibold tabular-nums text-slate-900">
+                        $0.00
+                      </p>
+                      <p id="sighthoundNodesBreakdown" class="mt-1 text-xs text-slate-600">
+                        Nodes: 0 × $3,500
+                      </p>
+                      <p id="sighthoundCamerasBreakdown" class="mt-0.5 text-xs text-slate-600">
+                        Cameras: 0 × $0.00
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Supporting metrics -->
+                <div class="grid gap-4 sm:grid-cols-3">
+                  <!-- Nodes required -->
+                  <div class="rounded-xl border border-slate-200/80 bg-white/60 p-4">
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Nodes required</h3>
+                    <p class="mt-1 text-xs text-slate-600">Based on 4 cameras per node.</p>
+                    <p id="nodesNeeded" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900">0</p>
+                  </div>
+
+                  <!-- Percent reduction -->
+                  <div class="rounded-xl border border-slate-200/80 bg-white/60 p-4">
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">% reduction</h3>
+                    <p class="mt-1 text-xs text-slate-600">Relative to today’s hardware cost.</p>
+                    <div class="mt-3 flex items-baseline gap-2">
+                      <p
+                        id="percentReduction"
+                        class="text-2xl font-semibold tabular-nums text-emerald-600"
+                      >
+                        0.0%
+                      </p>
+                      <span
+                        id="percentArrow"
+                        class="text-lg leading-none text-emerald-600"
+                        aria-hidden="true"
+                      >
+                        ↓
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Cost per camera -->
+                  <div class="rounded-xl border border-slate-200/80 bg-white/60 p-4">
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cost per camera</h3>
+                    <div class="mt-2 space-y-1 text-sm">
+                      <div class="flex items-baseline justify-between gap-4">
+                        <span class="text-xs text-slate-600">Before</span>
+                        <span
+                          id="costPerCameraBefore"
+                          class="tabular-nums text-sm font-medium text-slate-900"
+                        >
+                          $0.00
+                        </span>
+                      </div>
+                      <div class="flex items-baseline justify-between gap-4">
+                        <span class="text-xs text-slate-600">After</span>
+                        <span
+                          id="costPerCameraAfter"
+                          class="tabular-nums text-sm font-medium text-slate-900"
+                        >
+                          $0.00
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- CTA card -->
+            <section class="rounded-2xl bg-[#10152f] px-5 py-5 text-slate-50 shadow-sm">
+              <h3 class="text-base font-semibold">Want a real quote for your site?</h3>
+              <p class="mt-1 text-sm text-slate-200">
+                Talk to Sighthound about a trial kit or deployment options.
+              </p>
+              <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a
+                  href="https://www.sighthound.com/contact-us"
+                  class="inline-flex items-center justify-center rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                >
+                  Request a trial kit
+                </a>
+                <a
+                  href="https://www.sighthound.com/contact-us"
+                  class="inline-flex items-center justify-center rounded-md border border-slate-500/70 px-4 py-2 text-sm font-medium text-slate-50 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                >
+                  Talk to sales
+                </a>
+              </div>
+            </section>
+
+            <!-- Disclaimer -->
+            <p class="text-xs text-slate-500">
+              Hardware-only estimate. Prices vary by vendor and volume.
+            </p>
+          </div>
+        </div>
+
+        <script src="script.js"></script>
+      </main>
+    </div>
   </body>
 </html>
