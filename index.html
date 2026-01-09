@@ -7,7 +7,7 @@
     <!-- Fonts: Poppins for headings, Lexend for body text -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap"
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -20,7 +20,7 @@
       :root {
         --font-body: "Lexend", system-ui, -apple-system, BlinkMacSystemFont,
           "Segoe UI", sans-serif;
-        --font-heading: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+        --font-heading: "Lexend", system-ui, -apple-system, BlinkMacSystemFont,
           "Segoe UI", sans-serif;
       }
 
@@ -53,14 +53,6 @@
               class="h-8 w-auto shrink-0"
               onerror="this.style.display='none'"
             />
-            <div>
-              <h1 class="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50 lg:text-xl">
-                Hardware Savings Calculator
-              </h1>
-              <p class="text-xs text-slate-600 dark:text-slate-300 lg:text-sm">
-                Smart cameras vs Compute Node + IP cameras
-              </p>
-            </div>
           </div>
           <button
             id="themeToggle"
@@ -85,12 +77,29 @@
       <!-- Main content -->
       <main class="flex-1">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <h1 class="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 mb-3">
+            Hardware Savings Calculator
+          </h1>
+          <section class="mb-6 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+              How this works
+            </h2>
+            <p>
+              This calculator estimates how much you can save by deploying Sighthound Compute Hardware in your system that brings AI to the edge, instead of buying smart AI cameras for every location.
+            </p>
+            <p>
+              Compare the cost of smart AI cameras vs a Sighthound Compute Node with standard IP cameras.
+            </p>
+          </section>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
             <!-- Inputs column -->
             <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5 dark:bg-slate-900 dark:border-slate-700">
               <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">
-                Deployment inputs
+                Your setup
               </h2>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Enter your camera count and typical hardware costs. Results update instantly.
+              </p>
 
               <div class="space-y-4">
                 <!-- Total cameras -->
@@ -177,20 +186,18 @@
                 </div>
               </div>
 
-              <div class="flex items-center justify-end pt-1">
+              <div class="mt-2 flex items-center justify-end">
                 <button
                   id="resetCalculatorButton"
                   type="button"
                   class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
                 >
-                  Reset calculations
+                  <span aria-hidden="true" class="mr-1.5 text-[0.8rem]">
+                    ↻
+                  </span>
+                  <span>Reset calculations</span>
                 </button>
               </div>
-
-              <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                Results are estimates only and do not include software, installation, or
-                ongoing services.
-              </p>
             </section>
 
             <!-- Results column -->
@@ -211,9 +218,12 @@
                 <div
                   class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 dark:bg-slate-900 dark:border-slate-700"
                 >
-                  <h3 class="text-sm font-semibold text-slate-800 mb-4 dark:text-slate-50">
+                  <h3 class="text-sm font-semibold text-slate-800 mb-1 dark:text-slate-50">
                     Your hardware costs
                   </h3>
+                  <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                    A side-by-side view of todays approach versus Sighthound Compute Hardware.
+                  </p>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Today -->
                     <div class="border border-slate-200 rounded-lg p-4 flex flex-col gap-1.5 dark:border-slate-700">
@@ -231,7 +241,7 @@
                     <!-- Sighthound -->
                     <div class="border border-sky-300 rounded-lg p-4 flex flex-col gap-1.5 bg-sky-50/70 shadow-sm dark:border-sky-500/70 dark:bg-sky-950/40">
                       <p class="text-xs font-medium text-slate-700 uppercase tracking-wide flex items-center justify-between gap-2 dark:text-slate-100">
-                        <span>Your cost with Sighthound hardware</span>
+                        <span>Your cost with Sighthound Compute Hardware</span>
                         <span class="inline-flex items-center rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
                           Focus
                         </span>
@@ -243,6 +253,25 @@
                         $0.00
                       </p>
                     </div>
+                  </div>
+
+                  <div class="mt-3 space-y-1">
+                    <div class="flex items-start gap-2">
+                      <input
+                        id="existingCamerasToggle"
+                        type="checkbox"
+                        class="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <label
+                        for="existingCamerasToggle"
+                        class="text-xs text-slate-600 dark:text-slate-400"
+                      >
+                        We already have standard IP cameras installed in this system.
+                      </label>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                      Use this if you already have standard IP cameras installed and won't be buying new ones.
+                    </p>
                   </div>
 
                   <!-- Progressive breakdown -->
@@ -266,12 +295,12 @@
                         </p>
                       </div>
                       <div class="space-y-1.5">
-                        <p class="font-medium text-slate-700 dark:text-slate-200">Sighthound</p>
+                        <p class="font-medium text-slate-700 dark:text-slate-200">Sighthound Compute Hardware</p>
                         <p id="sighthoundBreakdownNodes" class="text-slate-600 dark:text-slate-400">
-                          Nodes: –
+                          Compute Nodes: 2
                         </p>
                         <p id="sighthoundBreakdownCameras" class="text-slate-600 dark:text-slate-400">
-                          Cameras: –
+                          Cameras: 2
                         </p>
                       </div>
                     </div>
@@ -297,7 +326,7 @@
                         $0.00
                       </p>
                       <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Hardware-only comparison across your full deployment.
+                        The difference between your current hardware spend and the Sighthound Compute Hardware approach.
                       </p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
@@ -331,9 +360,12 @@
                   <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-50">
                     Deployment details
                   </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    A quick breakdown of Compute Nodes required, cost reduction, and cost per camera.
+                  </p>
                   <dl class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                     <div class="space-y-1">
-                      <dt class="text-xs text-slate-500 dark:text-slate-400">Nodes required</dt>
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">Compute Nodes required</dt>
                       <dd
                         id="nodesNeededValue"
                         class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
@@ -519,6 +551,7 @@
       const totalCamerasInput = document.getElementById("totalCameras");
       const smartCameraCostInput = document.getElementById("smartCameraCost");
       const dumbCameraCostInput = document.getElementById("dumbCameraCost");
+      const existingCamerasToggle = document.getElementById("existingCamerasToggle");
       const resetCalculatorButton = document.getElementById("resetCalculatorButton");
 
       const defaultSmartCameraCost = smartCameraCostInput
@@ -639,7 +672,7 @@
 
         try {
           const bodyLines = [
-            "Sighthound hardware savings calculator details:",
+            "Sighthound Compute Hardware savings calculator details:",
             "",
             `Total cameras: ${totalCameras.toLocaleString("en-US")}`,
             `Smart camera cost (today): ${formatCurrency(smartCameraCost)}`,
@@ -694,6 +727,12 @@
         });
       }
 
+      if (existingCamerasToggle) {
+        existingCamerasToggle.addEventListener("change", () => {
+          updateResults();
+        });
+      }
+
       function formatCurrency(value) {
         if (!isFinite(value)) return "$0.00";
         return value.toLocaleString("en-US", {
@@ -735,6 +774,9 @@
         if (shareDetailsCheckbox) {
           shareDetailsCheckbox.checked = false;
         }
+        if (existingCamerasToggle) {
+          existingCamerasToggle.checked = false;
+        }
         clearUrlParams();
         updateResults();
       }
@@ -758,6 +800,9 @@
           10000,
           false
         );
+        const hasExistingCameras = existingCamerasToggle
+          ? existingCamerasToggle.checked
+          : false;
 
         if (
           totalCameras === null ||
@@ -772,8 +817,10 @@
 
         const nodesNeeded = Math.ceil(totalCameras / CAMERAS_PER_NODE);
         const currentTotal = totalCameras * smartCameraCost;
-        const sighthoundTotal =
-          nodesNeeded * NODE_COST + totalCameras * dumbCameraCost;
+        const sighthoundCameraHardwareTotal = hasExistingCameras
+          ? 0
+          : totalCameras * dumbCameraCost;
+        const sighthoundTotal = nodesNeeded * NODE_COST + sighthoundCameraHardwareTotal;
         const savings = currentTotal - sighthoundTotal;
         const percentReduction = (savings / currentTotal) * 100;
         const costPerCameraBefore = currentTotal / totalCameras;
@@ -816,15 +863,20 @@
         }
 
         if (sighthoundBreakdownNodes) {
-          sighthoundBreakdownNodes.textContent = `Nodes: ${nodesNeeded.toLocaleString(
+          sighthoundBreakdownNodes.textContent = `Compute Nodes: ${nodesNeeded.toLocaleString(
             "en-US"
-          )} × ${formatCurrency(NODE_COST)}`;
+          )} 2 ${formatCurrency(NODE_COST)}`;
         }
 
         if (sighthoundBreakdownCameras) {
-          sighthoundBreakdownCameras.textContent = `Cameras: ${totalCameras.toLocaleString(
-            "en-US"
-          )} × ${formatCurrency(dumbCameraCost)}`;
+          if (hasExistingCameras) {
+            sighthoundBreakdownCameras.textContent =
+              "Cameras: existing standard IP cameras (no new hardware cost)";
+          } else {
+            sighthoundBreakdownCameras.textContent = `Cameras: ${totalCameras.toLocaleString(
+              "en-US"
+            )} 2 ${formatCurrency(dumbCameraCost)}`;
+          }
         }
 
         // Secondary metrics
