@@ -144,6 +144,63 @@ if (typeof document !== 'undefined') {
   const form = document.getElementById('calculator-form');
   const errorEl = document.getElementById('error');
 
+  // Theme toggle
+  const themeToggleButton = document.getElementById('themeToggle');
+  const themeToggleLabel = document.getElementById('themeToggleLabel');
+  const headerLogo = document.getElementById('headerLogo');
+
+  function setTheme(theme) {
+    const root = document.documentElement;
+    if (!root) return;
+
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      try {
+        localStorage.setItem('theme', 'dark');
+      } catch (e) {}
+      if (themeToggleButton) themeToggleButton.setAttribute('aria-pressed', 'true');
+      if (themeToggleLabel) themeToggleLabel.textContent = 'Light mode';
+    } else {
+      root.classList.remove('dark');
+      try {
+        localStorage.setItem('theme', 'light');
+      } catch (e) {}
+      if (themeToggleButton) themeToggleButton.setAttribute('aria-pressed', 'false');
+      if (themeToggleLabel) themeToggleLabel.textContent = 'Dark mode';
+    }
+
+    // Swap header logo based on theme, if both variants are available
+    if (headerLogo) {
+      const lightSrc = headerLogo.getAttribute('data-logo-light');
+      const darkSrc = headerLogo.getAttribute('data-logo-dark');
+      if (theme === 'dark' && darkSrc) {
+        headerLogo.src = darkSrc;
+      } else if (theme === 'light' && lightSrc) {
+        headerLogo.src = lightSrc;
+      }
+    }
+  }
+
+  // Initialise theme from saved preference or OS setting
+  (function initTheme() {
+    try {
+      const stored = localStorage.getItem('theme');
+      const prefersDark =
+        window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = stored || (prefersDark ? 'dark' : 'light');
+      setTheme(initial);
+    } catch (e) {
+      setTheme('light');
+    }
+  })();
+
+  if (themeToggleButton) {
+    themeToggleButton.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'light' : 'dark');
+    });
+  }
+
   // Results DOM elements
   const currentTotalEl = document.getElementById('currentTotal');
   const sighthoundTotalEl = document.getElementById('sighthoundTotal');
