@@ -2,8 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Hardware Savings Calculator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hardware Savings Calculator | Sighthound</title>
     <!-- Fonts: Poppins for headings, Lexend for body text -->
     <link
       rel="stylesheet"
@@ -13,13 +13,15 @@
     <script>
       // Configure Tailwind CDN to use class-based dark mode
       tailwind.config = {
-        darkMode: 'class',
+        darkMode: "class",
       };
     </script>
     <style>
       :root {
-        --font-body: 'Lexend', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        --font-heading: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --font-body: "Lexend", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        --font-heading: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
       }
 
       body {
@@ -80,281 +82,822 @@
         </div>
       </header>
 
-      <main class="mx-auto max-w-6xl px-4 py-8 lg:py-10">
-        <div class="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-          <!-- LEFT COLUMN: Inputs + assumptions -->
-          <div class="space-y-6">
-            <section class="rounded-2xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-900/80 dark:ring-slate-700/80">
-              <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">Your setup</h2>
-              <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                Enter your current camera costs. We’ll do the math.
-              </p>
+      <!-- Main content -->
+      <main class="flex-1">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+            <!-- Inputs column -->
+            <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5 dark:bg-slate-900 dark:border-slate-700">
+              <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">
+                Deployment inputs
+              </h2>
 
-              <form id="calculator-form" class="mt-5 space-y-5" novalidate>
+              <div class="space-y-4">
                 <!-- Total cameras -->
-                <div>
-                  <label for="totalCameras" class="block text-sm font-medium text-slate-900 dark:text-slate-50">
+                <div class="space-y-1.5">
+                  <label
+                    for="totalCameras"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
                     Total cameras
                   </label>
-                  <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                    Enter your total camera count. We’ll automatically calculate how many Compute Nodes you need (4 cameras per
-                    node).
+                  <input
+                    id="totalCameras"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="10000"
+                    step="1"
+                    placeholder="Total cameras"
+                    class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Enter the total number of camera channels in your deployment.
                   </p>
-                  <div class="mt-2">
+                </div>
+
+                <!-- Smart camera cost -->
+                <div class="space-y-1.5">
+                  <label
+                    for="smartCameraCost"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Smart camera cost (today)
+                  </label>
+                  <div class="relative rounded-lg shadow-sm">
+                    <div
+                      class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-sm"
+                    >
+                      $
+                    </div>
                     <input
+                      id="smartCameraCost"
                       type="number"
-                      id="totalCameras"
-                      name="totalCameras"
+                      inputmode="decimal"
                       min="1"
                       max="10000"
                       step="1"
-                      placeholder="e.g., 14"
-                      class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-700"
+                      value="3000"
+                      class="block w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </div>
-                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Enter a whole number between 1 and 10,000.</p>
-                </div>
-
-                <!-- Cost per smart AI camera -->
-                <div>
-                  <label for="smartCameraCost" class="block text-sm font-medium text-slate-900 dark:text-slate-50">
-                    Cost per smart AI camera
-                  </label>
-                  <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                    What you’d pay for a camera with built-in AI (often called an “edge AI” or “smart” camera).
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Typical price per smart AI camera.
                   </p>
-                  <div class="relative mt-2 rounded-md shadow-sm">
-                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <span class="text-sm text-slate-500 dark:text-slate-400">$</span>
-                    </div>
-                    <input
-                      type="number"
-                      id="smartCameraCost"
-                      name="smartCameraCost"
-                      min="1"
-                      max="10000"
-                      step="0.01"
-                      placeholder="3000"
-                      class="block w-full rounded-md border-slate-300 bg-white py-2 pl-7 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-700"
-                    />
-                  </div>
-                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Enter a value between $1.00 and $10,000.00.</p>
                 </div>
 
-                <!-- Cost per standard IP camera -->
-                <div>
-                  <label for="dumbCameraCost" class="block text-sm font-medium text-slate-900 dark:text-slate-50">
-                    Cost per standard IP camera
-                  </label>
-                  <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                    A regular IP camera that streams video. The Compute Node handles the AI.
-                  </p>
-                  <div class="relative mt-2 rounded-md shadow-sm">
-                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <span class="text-sm text-slate-500 dark:text-slate-400">$</span>
-                    </div>
-                    <input
-                      type="number"
-                      id="dumbCameraCost"
-                      name="dumbCameraCost"
-                      min="1"
-                      max="10000"
-                      step="0.01"
-                      placeholder="250"
-                      class="block w-full rounded-md border-slate-300 bg-white py-2 pl-7 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-1 ring-inset ring-slate-200 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-700"
-                    />
-                  </div>
-                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Enter a value between $1.00 and $10,000.00.</p>
-                </div>
-
-                <!-- Validation error -->
-                <p id="error" class="text-sm text-red-600 dark:text-red-400" aria-live="polite"></p>
-
-                <div class="pt-1">
-                  <button
-                    type="submit"
-                    class="inline-flex w-full items-center justify-center rounded-md bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:w-auto"
+                <!-- IP camera cost -->
+                <div class="space-y-1.5">
+                  <label
+                    for="dumbCameraCost"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
                   >
-                    Calculate savings
-                  </button>
-                </div>
-              </form>
-            </section>
-
-            <!-- Locked assumptions -->
-            <section class="rounded-2xl bg-slate-50 p-5 text-sm shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-900 dark:ring-slate-700/80">
-              <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-50">Assumptions (locked)</h3>
-              <dl class="mt-3 space-y-1 text-slate-700 dark:text-slate-200">
-                <div class="flex items-baseline justify-between gap-4">
-                  <dt class="text-xs text-slate-500 dark:text-slate-400">Cameras per Compute Node</dt>
-                  <dd class="tabular-nums">4</dd>
-                </div>
-                <div class="flex items-baseline justify-between gap-4">
-                  <dt class="text-xs text-slate-500 dark:text-slate-400">Compute Node cost</dt>
-                  <dd class="tabular-nums">$3,500 (fixed)</dd>
-                </div>
-              </dl>
-              <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Nodes required = ceiling(total cameras ÷ 4).</p>
-            </section>
-          </div>
-
-          <!-- RIGHT COLUMN: Results + CTA -->
-          <div class="space-y-6">
-            <!-- Results card -->
-            <section
-              id="resultsSection"
-              class="rounded-2xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-900/80 dark:ring-slate-700/80"
-              aria-live="polite"
-            >
-              <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">Results</h2>
-
-              <!-- Empty state -->
-              <p id="resultsPlaceholder" class="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                Enter your camera count to see the savings.
-              </p>
-
-              <!-- Results content -->
-              <div id="resultsCards" class="mt-5 space-y-6 hidden">
-                <!-- Primary callout -->
-                <div class="rounded-xl bg-[#10152f] px-5 py-4 text-slate-50 shadow-sm">
-                  <p id="savingsLabel" class="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                    Immediate savings
+                    IP camera cost (with Sighthound)
+                  </label>
+                  <div class="relative rounded-lg shadow-sm">
+                    <div
+                      class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-sm"
+                    >
+                      $
+                    </div>
+                    <input
+                      id="dumbCameraCost"
+                      type="number"
+                      inputmode="decimal"
+                      min="1"
+                      max="10000"
+                      step="1"
+                      value="250"
+                      class="block w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Typical price per standard IP camera.
                   </p>
-                  <div class="mt-2 flex items-baseline gap-3">
-                    <p id="savings" class="text-3xl font-semibold tabular-nums text-emerald-400 sm:text-4xl">
-                      $0.00
-                    </p>
-                    <span id="primaryArrow" class="text-2xl leading-none text-emerald-400">↓</span>
-                  </div>
-                  <p class="mt-1 text-xs text-slate-300">Hardware-only estimate.</p>
                 </div>
+              </div>
 
-                <!-- Comparison block -->
-                <div class="rounded-xl border border-slate-200/80 bg-white/60 p-5 dark:border-slate-700/80 dark:bg-slate-900/60">
-                  <div class="grid gap-6 sm:grid-cols-2">
-                    <div>
-                      <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Today</h3>
-                      <p id="currentTotal" class="mt-2 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">
-                        $0.00
-                      </p>
-                      <p id="todayBreakdown" class="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        Cameras: 0 × $0.00
-                      </p>
-                    </div>
-                    <div class="border-t border-slate-200/80 pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0 dark:border-slate-700/80">
-                      <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Sighthound</h3>
-                      <p id="sighthoundTotal" class="mt-2 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">
-                        $0.00
-                      </p>
-                      <p id="sighthoundNodesBreakdown" class="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        Nodes: 0 × $3,500
-                      </p>
-                      <p id="sighthoundCamerasBreakdown" class="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
-                        Cameras: 0 × $0.00
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div class="flex items-center justify-end pt-1">
+                <button
+                  id="resetCalculatorButton"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
+                >
+                  Reset calculations
+                </button>
+              </div>
 
-                <!-- Supporting metrics -->
-                <div class="grid gap-4 sm:grid-cols-3">
-                  <!-- Nodes required -->
-                  <div class="rounded-xl border border-slate-200/80 bg-white/60 p-4 dark:border-slate-700/80 dark:bg-slate-900/60">
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Nodes required</h3>
-                    <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Based on 4 cameras per node.</p>
-                    <p id="nodesNeeded" class="mt-3 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">0</p>
-                  </div>
+              <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Results are estimates only and do not include software, installation, or
+                ongoing services.
+              </p>
+            </section>
 
-                  <!-- Percent reduction -->
-                  <div class="rounded-xl border border-slate-200/80 bg-white/60 p-4 dark:border-slate-700/80 dark:bg-slate-900/60">
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">% reduction</h3>
-                    <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Relative to today’s hardware cost.</p>
-                    <div class="mt-3 flex items-baseline gap-2">
+            <!-- Results column -->
+            <section class="space-y-4">
+              <!-- Placeholder state -->
+              <div
+                id="resultsPlaceholder"
+                class="bg-white rounded-xl shadow-sm border border-dashed border-slate-300 p-6 flex items-center justify-center text-center min-h-[220px] dark:bg-slate-900 dark:border-slate-700"
+              >
+                <p class="text-sm text-slate-500 dark:text-slate-400">
+                  Enter your camera count to see results.
+                </p>
+              </div>
+
+              <!-- Results -->
+              <div id="resultsPanel" class="hidden space-y-4">
+                <!-- Cost comparison -->
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 dark:bg-slate-900 dark:border-slate-700"
+                >
+                  <h3 class="text-sm font-semibold text-slate-800 mb-4 dark:text-slate-50">
+                    Your hardware costs
+                  </h3>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Today -->
+                    <div class="border border-slate-200 rounded-lg p-4 flex flex-col gap-1.5 dark:border-slate-700">
+                      <p class="text-xs font-medium text-slate-600 uppercase tracking-wide dark:text-slate-400">
+                        Your cost today
+                      </p>
                       <p
-                        id="percentReduction"
-                        class="text-2xl font-semibold tabular-nums text-emerald-600"
+                        id="currentTotalValue"
+                        class="text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50"
                       >
-                        0.0%
+                        $0.00
                       </p>
-                      <span
-                        id="percentArrow"
-                        class="text-lg leading-none text-emerald-600"
+                    </div>
+
+                    <!-- Sighthound -->
+                    <div class="border border-sky-300 rounded-lg p-4 flex flex-col gap-1.5 bg-sky-50/70 shadow-sm dark:border-sky-500/70 dark:bg-sky-950/40">
+                      <p class="text-xs font-medium text-slate-700 uppercase tracking-wide flex items-center justify-between gap-2 dark:text-slate-100">
+                        <span>Your cost with Sighthound hardware</span>
+                        <span class="inline-flex items-center rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
+                          Focus
+                        </span>
+                      </p>
+                      <p
+                        id="sighthoundTotalValue"
+                        class="text-lg sm:text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-50"
+                      >
+                        $0.00
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Progressive breakdown -->
+                  <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                    <button
+                      id="breakdownToggle"
+                      type="button"
+                      class="text-xs font-medium text-sky-700 hover:text-sky-800 flex items-center gap-1 dark:text-sky-400 dark:hover:text-sky-300"
+                      aria-expanded="false"
+                    >
+                      Show breakdown
+                    </button>
+                    <div
+                      id="breakdownPanel"
+                      class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-600 tabular-nums hidden dark:text-slate-400"
+                    >
+                      <div class="space-y-1.5">
+                        <p class="font-medium text-slate-700 dark:text-slate-200">Today</p>
+                        <p id="todayBreakdownLine" class="text-slate-600 dark:text-slate-400">
+                          Cameras: –
+                        </p>
+                      </div>
+                      <div class="space-y-1.5">
+                        <p class="font-medium text-slate-700 dark:text-slate-200">Sighthound</p>
+                        <p id="sighthoundBreakdownNodes" class="text-slate-600 dark:text-slate-400">
+                          Nodes: –
+                        </p>
+                        <p id="sighthoundBreakdownCameras" class="text-slate-600 dark:text-slate-400">
+                          Cameras: –
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Savings card -->
+                <div
+                  class="rounded-xl shadow-sm border border-slate-200 bg-gradient-to-br from-sky-50/80 via-slate-50 to-emerald-50/80 p-5 sm:p-6 flex flex-col gap-4 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900"
+                >
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <p
+                        id="primaryLabel"
+                        class="text-sm font-medium text-slate-700 flex items-center gap-1.5 dark:text-slate-200"
+                      >
+                        <span> Savings vs today </span>
+                      </p>
+                      <p
+                        id="primaryValue"
+                        class="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums"
+                      >
+                        $0.00
+                      </p>
+                      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Hardware-only comparison across your full deployment.
+                      </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                      <div
+                        id="primaryArrow"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
                         aria-hidden="true"
                       >
-                        ↓
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Cost per camera -->
-                  <div class="rounded-xl border border-slate-200/80 bg-white/60 p-4 dark:border-slate-700/80 dark:bg-slate-900/60">
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cost per camera</h3>
-                    <div class="mt-2 space-y-1 text-sm">
-                      <div class="flex items-baseline justify-between gap-4">
-                        <span class="text-xs text-slate-600 dark:text-slate-300">Before</span>
-                        <span
-                          id="costPerCameraBefore"
-                          class="tabular-nums text-sm font-medium text-slate-900 dark:text-slate-50"
+                        <svg
+                          id="primaryArrowIcon"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          class="h-4 w-4"
                         >
-                          $0.00
-                        </span>
-                      </div>
-                      <div class="flex items-baseline justify-between gap-4">
-                        <span class="text-xs text-slate-600 dark:text-slate-300">After</span>
-                        <span
-                          id="costPerCameraAfter"
-                          class="tabular-nums text-sm font-medium text-slate-900 dark:text-slate-50"
-                        >
-                          $0.00
-                        </span>
+                          <path
+                            fill-rule="evenodd"
+                            d="M10 2a.75.75 0 0 1 .75.75v12.638l3.72-3.719a.75.75 0 1 1 1.06 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0l-5.25-5.25a.75.75 0 1 1 1.06-1.06l3.72 3.719V2.75A.75.75 0 0 1 10 2Z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
 
-            <!-- CTA card -->
-            <section class="rounded-2xl bg-[#10152f] px-5 py-5 text-slate-50 shadow-sm">
-              <div class="flex items-start gap-3">
-                <img
-                  src="assets/sighthound-logo-white.png"
-                  alt="Sighthound"
-                  class="mt-1 h-8 w-auto shrink-0"
-                  onerror="this.style.display='none'"
-                />
-                <div>
-                  <h3 class="text-base font-semibold">Want a real quote for your site?</h3>
-                  <p class="mt-1 text-sm text-slate-200">
-                    Talk to Sighthound about a trial kit or deployment options.
+                <!-- Secondary metrics -->
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-4 dark:bg-slate-900 dark:border-slate-700"
+                >
+                  <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-50">
+                    Deployment details
+                  </h3>
+                  <dl class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div class="space-y-1">
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">Nodes required</dt>
+                      <dd
+                        id="nodesNeededValue"
+                        class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
+                      >
+                        0
+                      </dd>
+                    </div>
+
+                    <div class="space-y-1">
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">% reduction</dt>
+                      <dd class="flex items-center gap-1.5">
+                        <span
+                          id="percentReductionValue"
+                          class="font-medium tabular-nums text-emerald-600"
+                        >
+                          0.0%
+                        </span>
+                        <span
+                          id="percentArrowIcon"
+                          class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                          aria-hidden="true"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            class="h-3 w-3"
+                          >
+                            <path
+                              fill-rule="evenodd"
+                              d="M10 2a.75.75 0 0 1 .75.75v12.638l3.72-3.719a.75.75 0 1 1 1.06 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0l-5.25-5.25a.75.75 0 1 1 1.06-1.06l3.72 3.719V2.75A.75.75 0 0 1 10 2Z"
+                              clip-rule="evenodd"
+                            />
+                          </svg>
+                        </span>
+                      </dd>
+                    </div>
+
+                    <div class="space-y-1">
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">Cost per camera</dt>
+                      <dd class="space-y-0.5">
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-xs text-slate-500 dark:text-slate-400">Before</span>
+                          <span
+                            id="costPerCameraBeforeValue"
+                            class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
+                          >
+                            $0.00
+                          </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-xs text-slate-500 dark:text-slate-400">After</span>
+                          <span
+                            id="costPerCameraAfterValue"
+                            class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
+                          >
+                            $0.00
+                          </span>
+                        </div>
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <!-- CTA -->
+                <aside
+                  class="rounded-xl shadow-sm border border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100/80 p-5 sm:p-6 flex flex-col gap-3 dark:border-slate-700 dark:from-slate-900 dark:to-slate-900"
+                >
+                  <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                    Ready to order your trial kit?
+                  </h3>
+                  <label
+                    for="shareDetailsConsent"
+                    class="mt-1 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400"
+                  >
+                    <input
+                      id="shareDetailsConsent"
+                      type="checkbox"
+                      class="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                    />
+                    <span>
+                      Share your camera counts, retention, and AI workloads and our
+                      team will size a full solution for you.
+                    </span>
+                  </label>
+                  <div class="mt-2 flex flex-col gap-2">
+                    <a
+                      id="primaryCtaLink"
+                      href="https://www.sighthound.com/contact-us"
+                      class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Request a trial kit
+                    </a>
+                    <a
+                      id="secondaryCtaLink"
+                      href="mailto:support@sighthound.com"
+                      class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"
+                    >
+                      Email support@sighthound.com
+                    </a>
+                  </div>
+                  <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    Hardware-only estimate.
                   </p>
-                </div>
-              </div>
-              <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <a
-                  href="https://www.sighthound.com/contact-us"
-                  class="inline-flex items-center justify-center rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-sky-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-                >
-                  Request a trial kit
-                </a>
-                <a
-                  href="https://www.sighthound.com/contact-us"
-                  class="inline-flex items-center justify-center rounded-md border border-slate-500/70 px-4 py-2 text-sm font-medium text-slate-50 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-                >
-                  Talk to sales
-                </a>
+                </aside>
               </div>
             </section>
-
-            <!-- Disclaimer -->
-            <p class="text-xs text-slate-500">
-              Hardware-only estimate. Prices vary by vendor and volume.
-            </p>
           </div>
         </div>
-
-        <script src="script.js"></script>
       </main>
     </div>
+
+    <script>
+      // Constants (hidden from UI)
+      const CAMERAS_PER_NODE = 4;
+      const NODE_COST = 3500;
+      const CONTACT_BASE_URL = "https://www.sighthound.com/contact-us";
+      const SUPPORT_EMAIL = "support@sighthound.com";
+
+      // Theme toggle wiring
+      const themeToggleButton = document.getElementById("themeToggle");
+      const themeToggleLabel = document.getElementById("themeToggleLabel");
+      const headerLogo = document.getElementById("headerLogo");
+
+      function setTheme(theme) {
+        const root = document.documentElement;
+        if (!root) return;
+
+        if (theme === "dark") {
+          root.classList.add("dark");
+          try {
+            localStorage.setItem("theme", "dark");
+          } catch (e) {}
+          if (themeToggleButton)
+            themeToggleButton.setAttribute("aria-pressed", "true");
+          if (themeToggleLabel) themeToggleLabel.textContent = "Light mode";
+        } else {
+          root.classList.remove("dark");
+          try {
+            localStorage.setItem("theme", "light");
+          } catch (e) {}
+          if (themeToggleButton)
+            themeToggleButton.setAttribute("aria-pressed", "false");
+          if (themeToggleLabel) themeToggleLabel.textContent = "Dark mode";
+        }
+
+        // Swap header logo based on theme, if both variants are available
+        if (headerLogo) {
+          const lightSrc = headerLogo.getAttribute("data-logo-light");
+          const darkSrc = headerLogo.getAttribute("data-logo-dark");
+          if (theme === "dark" && darkSrc) {
+            headerLogo.src = darkSrc;
+          } else if (theme === "light" && lightSrc) {
+            headerLogo.src = lightSrc;
+          }
+        }
+      }
+
+      // Initialise theme from saved preference or OS setting
+      (function initTheme() {
+        try {
+          const stored = localStorage.getItem("theme");
+          const prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const initial = stored || (prefersDark ? "dark" : "light");
+          setTheme(initial);
+        } catch (e) {
+          setTheme("light");
+        }
+      })();
+
+      if (themeToggleButton) {
+        themeToggleButton.addEventListener("click", () => {
+          const isDark = document.documentElement.classList.contains("dark");
+          setTheme(isDark ? "light" : "dark");
+        });
+      }
+
+      // Calculator wiring
+      const totalCamerasInput = document.getElementById("totalCameras");
+      const smartCameraCostInput = document.getElementById("smartCameraCost");
+      const dumbCameraCostInput = document.getElementById("dumbCameraCost");
+      const resetCalculatorButton = document.getElementById("resetCalculatorButton");
+
+      const defaultSmartCameraCost = smartCameraCostInput
+        ? smartCameraCostInput.value
+        : "3000";
+      const defaultDumbCameraCost = dumbCameraCostInput
+        ? dumbCameraCostInput.value
+        : "250";
+
+      const resultsPlaceholder = document.getElementById("resultsPlaceholder");
+      const resultsPanel = document.getElementById("resultsPanel");
+
+      const primaryLabel = document.getElementById("primaryLabel");
+      const primaryValue = document.getElementById("primaryValue");
+      const primaryArrow = document.getElementById("primaryArrow");
+      const primaryArrowIcon = document.getElementById("primaryArrowIcon");
+
+      const currentTotalValue = document.getElementById("currentTotalValue");
+      const sighthoundTotalValue = document.getElementById(
+        "sighthoundTotalValue"
+      );
+
+      const breakdownToggle = document.getElementById("breakdownToggle");
+      const breakdownPanel = document.getElementById("breakdownPanel");
+      const todayBreakdownLine = document.getElementById("todayBreakdownLine");
+      const sighthoundBreakdownNodes = document.getElementById(
+        "sighthoundBreakdownNodes"
+      );
+      const sighthoundBreakdownCameras = document.getElementById(
+        "sighthoundBreakdownCameras"
+      );
+
+      const shareDetailsCheckbox = document.getElementById(
+        "shareDetailsConsent"
+      );
+      const primaryCtaLink = document.getElementById("primaryCtaLink");
+      const secondaryCtaLink = document.getElementById("secondaryCtaLink");
+
+      const nodesNeededValue = document.getElementById("nodesNeededValue");
+      const percentReductionValue = document.getElementById(
+        "percentReductionValue"
+      );
+      const percentArrowIcon = document.getElementById("percentArrowIcon");
+      const costPerCameraBeforeValue = document.getElementById(
+        "costPerCameraBeforeValue"
+      );
+      const costPerCameraAfterValue = document.getElementById(
+        "costPerCameraAfterValue"
+      );
+
+      function resetCtaLinks() {
+        if (primaryCtaLink) {
+          primaryCtaLink.href = CONTACT_BASE_URL;
+        }
+        if (secondaryCtaLink) {
+          secondaryCtaLink.href = `mailto:${SUPPORT_EMAIL}`;
+        }
+      }
+
+      function syncUrlParams(totalCameras, smartCameraCost, dumbCameraCost) {
+        if (!window || !window.history || !window.location) return;
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set("cameras", String(totalCameras));
+          url.searchParams.set("smart", String(smartCameraCost));
+          url.searchParams.set("dumb", String(dumbCameraCost));
+          window.history.replaceState({}, "", url.toString());
+        } catch (e) {}
+      }
+
+      function clearUrlParams() {
+        if (!window || !window.history || !window.location) return;
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("cameras");
+          url.searchParams.delete("smart");
+          url.searchParams.delete("dumb");
+          window.history.replaceState({}, "", url.toString());
+        } catch (e) {}
+      }
+
+      function updateCtaLinks(context) {
+        if (!primaryCtaLink || !secondaryCtaLink || !shareDetailsCheckbox) {
+          return;
+        }
+
+        if (!shareDetailsCheckbox.checked) {
+          resetCtaLinks();
+          return;
+        }
+
+        const {
+          totalCameras,
+          smartCameraCost,
+          dumbCameraCost,
+          nodesNeeded,
+          currentTotal,
+          sighthoundTotal,
+          savings,
+          percentReduction,
+          costPerCameraBefore,
+          costPerCameraAfter,
+        } = context;
+
+        try {
+          const contactUrl = new URL(CONTACT_BASE_URL);
+          contactUrl.searchParams.set("source", "hardware-calculator");
+          contactUrl.searchParams.set("cameras", String(totalCameras));
+          contactUrl.searchParams.set("smart", String(smartCameraCost));
+          contactUrl.searchParams.set("dumb", String(dumbCameraCost));
+          contactUrl.searchParams.set("nodes", String(nodesNeeded));
+          contactUrl.searchParams.set("savings", savings.toFixed(2));
+          contactUrl.searchParams.set("pct", percentReduction.toFixed(1));
+          primaryCtaLink.href = contactUrl.toString();
+        } catch (e) {
+          resetCtaLinks();
+        }
+
+        try {
+          const bodyLines = [
+            "Sighthound hardware savings calculator details:",
+            "",
+            `Total cameras: ${totalCameras.toLocaleString("en-US")}`,
+            `Smart camera cost (today): ${formatCurrency(smartCameraCost)}`,
+            `IP camera cost (with Sighthound): ${formatCurrency(
+              dumbCameraCost
+            )}`,
+            "",
+            `Nodes required: ${nodesNeeded.toLocaleString("en-US")}`,
+            `Today total: ${formatCurrency(currentTotal)}`,
+            `Sighthound total: ${formatCurrency(sighthoundTotal)}`,
+            `Savings: ${formatCurrency(savings)} (${formatPercent(
+              percentReduction
+            )})`,
+            "",
+            `Cost per camera before: ${formatCurrency(costPerCameraBefore)}`,
+            `Cost per camera after: ${formatCurrency(costPerCameraAfter)}`,
+            "",
+            `Calculator link: ${window.location.href}`,
+          ];
+          const mailtoParams = new URLSearchParams({
+            subject: "Sighthound hardware calculator estimate",
+            body: bodyLines.join("\n"),
+          });
+          secondaryCtaLink.href = `mailto:${SUPPORT_EMAIL}?${mailtoParams.toString()}`;
+        } catch (e) {
+          secondaryCtaLink.href = `mailto:${SUPPORT_EMAIL}`;
+        }
+      }
+
+      if (breakdownToggle && breakdownPanel) {
+        breakdownToggle.addEventListener("click", () => {
+          const isHidden = breakdownPanel.classList.contains("hidden");
+          if (isHidden) {
+            breakdownPanel.classList.remove("hidden");
+            breakdownToggle.textContent = "Hide breakdown";
+            breakdownToggle.setAttribute("aria-expanded", "true");
+          } else {
+            breakdownPanel.classList.add("hidden");
+            breakdownToggle.textContent = "Show breakdown";
+            breakdownToggle.setAttribute("aria-expanded", "false");
+          }
+        });
+      }
+
+      if (resetCalculatorButton) {
+        resetCalculatorButton.addEventListener("click", resetCalculator);
+      }
+
+      if (shareDetailsCheckbox) {
+        shareDetailsCheckbox.addEventListener("change", () => {
+          updateResults();
+        });
+      }
+
+      function formatCurrency(value) {
+        if (!isFinite(value)) return "$0.00";
+        return value.toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+
+      function formatPercent(value) {
+        if (!isFinite(value)) return "0.0%";
+        return `${value.toFixed(1)}%`;
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function parsePositiveNumber(input, min, max, isInteger) {
+        const raw = input.value.trim();
+        if (!raw) return null;
+        let num = isInteger ? parseInt(raw, 10) : parseFloat(raw);
+        if (!isFinite(num) || num < min || num > max) return null;
+        if (isInteger) num = Math.round(num);
+        return clamp(num, min, max);
+      }
+
+      function resetCalculator() {
+        if (totalCamerasInput) {
+          totalCamerasInput.value = "";
+        }
+        if (smartCameraCostInput) {
+          smartCameraCostInput.value = defaultSmartCameraCost;
+        }
+        if (dumbCameraCostInput) {
+          dumbCameraCostInput.value = defaultDumbCameraCost;
+        }
+        if (shareDetailsCheckbox) {
+          shareDetailsCheckbox.checked = false;
+        }
+        clearUrlParams();
+        updateResults();
+      }
+
+      function updateResults() {
+        const totalCameras = parsePositiveNumber(
+          totalCamerasInput,
+          1,
+          10000,
+          true
+        );
+        const smartCameraCost = parsePositiveNumber(
+          smartCameraCostInput,
+          1,
+          10000,
+          false
+        );
+        const dumbCameraCost = parsePositiveNumber(
+          dumbCameraCostInput,
+          1,
+          10000,
+          false
+        );
+
+        if (
+          totalCameras === null ||
+          smartCameraCost === null ||
+          dumbCameraCost === null
+        ) {
+          resultsPanel.classList.add("hidden");
+          resultsPlaceholder.classList.remove("hidden");
+          resetCtaLinks();
+          return;
+        }
+
+        const nodesNeeded = Math.ceil(totalCameras / CAMERAS_PER_NODE);
+        const currentTotal = totalCameras * smartCameraCost;
+        const sighthoundTotal =
+          nodesNeeded * NODE_COST + totalCameras * dumbCameraCost;
+        const savings = currentTotal - sighthoundTotal;
+        const percentReduction = (savings / currentTotal) * 100;
+        const costPerCameraBefore = currentTotal / totalCameras;
+        const costPerCameraAfter = sighthoundTotal / totalCameras;
+
+        // Toggle panels
+        resultsPlaceholder.classList.add("hidden");
+        resultsPanel.classList.remove("hidden");
+
+        // Keep URL shareable with current configuration
+        syncUrlParams(totalCameras, smartCameraCost, dumbCameraCost);
+
+        const isSavingsPositiveOrZero = savings >= 0;
+
+        // Primary card label + value
+        primaryLabel.textContent = isSavingsPositiveOrZero
+          ? "Savings vs today"
+          : "Extra cost vs today";
+        primaryValue.textContent = formatCurrency(Math.abs(savings));
+
+        // Primary arrow styling (down = good / up = bad)
+        primaryArrow.className =
+          "inline-flex h-8 w-8 items-center justify-center rounded-full " +
+          (isSavingsPositiveOrZero
+            ? "bg-emerald-50 text-emerald-600"
+            : "bg-rose-50 text-rose-600");
+
+        primaryArrowIcon.className =
+          "h-4 w-4 transition-transform duration-150" +
+          (isSavingsPositiveOrZero ? "" : " rotate-180");
+
+        // Comparison block
+        currentTotalValue.textContent = formatCurrency(currentTotal);
+        sighthoundTotalValue.textContent = formatCurrency(sighthoundTotal);
+
+        if (todayBreakdownLine) {
+          todayBreakdownLine.textContent = `Cameras: ${totalCameras.toLocaleString(
+            "en-US"
+          )} × ${formatCurrency(smartCameraCost)}`;
+        }
+
+        if (sighthoundBreakdownNodes) {
+          sighthoundBreakdownNodes.textContent = `Nodes: ${nodesNeeded.toLocaleString(
+            "en-US"
+          )} × ${formatCurrency(NODE_COST)}`;
+        }
+
+        if (sighthoundBreakdownCameras) {
+          sighthoundBreakdownCameras.textContent = `Cameras: ${totalCameras.toLocaleString(
+            "en-US"
+          )} × ${formatCurrency(dumbCameraCost)}`;
+        }
+
+        // Secondary metrics
+        nodesNeededValue.textContent = nodesNeeded.toLocaleString("en-US");
+
+        percentReductionValue.textContent = formatPercent(percentReduction);
+        percentReductionValue.className =
+          "font-medium tabular-nums " +
+          (isSavingsPositiveOrZero ? "text-emerald-600" : "text-rose-600");
+
+        percentArrowIcon.className =
+          "inline-flex h-5 w-5 items-center justify-center rounded-full " +
+          (isSavingsPositiveOrZero
+            ? "bg-emerald-50 text-emerald-600"
+            : "bg-rose-50 text-rose-600");
+
+        const percentArrowSvg = percentArrowIcon.querySelector("svg");
+        if (percentArrowSvg) {
+          percentArrowSvg.className =
+            "h-3 w-3 transition-transform duration-150" +
+            (isSavingsPositiveOrZero ? "" : " rotate-180");
+        }
+
+        costPerCameraBeforeValue.textContent = formatCurrency(
+          costPerCameraBefore
+        );
+        costPerCameraAfterValue.textContent = formatCurrency(costPerCameraAfter);
+
+        updateCtaLinks({
+          totalCameras,
+          smartCameraCost,
+          dumbCameraCost,
+          nodesNeeded,
+          currentTotal,
+          sighthoundTotal,
+          savings,
+          percentReduction,
+          costPerCameraBefore,
+          costPerCameraAfter,
+        });
+      }
+
+      function initFromQueryParams() {
+        if (!window || !window.location) return;
+        try {
+          const url = new URL(window.location.href);
+          const camerasParam = url.searchParams.get("cameras");
+          const smartParam = url.searchParams.get("smart");
+          const dumbParam = url.searchParams.get("dumb");
+
+          if (camerasParam && totalCamerasInput) {
+            totalCamerasInput.value = camerasParam;
+          }
+          if (smartParam && smartCameraCostInput) {
+            smartCameraCostInput.value = smartParam;
+          }
+          if (dumbParam && dumbCameraCostInput) {
+            dumbCameraCostInput.value = dumbParam;
+          }
+        } catch (e) {}
+      }
+
+      initFromQueryParams();
+      updateResults();
+
+      [
+        totalCamerasInput,
+        smartCameraCostInput,
+        dumbCameraCostInput,
+      ].forEach((input) => {
+        input.addEventListener("input", updateResults);
+        input.addEventListener("change", updateResults);
+      });
+    </script>
   </body>
 </html>
