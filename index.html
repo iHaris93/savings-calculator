@@ -16,6 +16,7 @@
         darkMode: "class",
       };
     </script>
+    <script src="script.js"></script>
     <style>
       :root {
         --font-body: "Lexend", system-ui, -apple-system, BlinkMacSystemFont,
@@ -182,6 +183,42 @@
                   </div>
                   <p class="text-xs text-slate-500 dark:text-slate-400">
                     Typical price per standard IP camera.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Optional software cost input -->
+              <div class="mt-4 border-t border-slate-200 pt-4 space-y-2 dark:border-slate-700">
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Optional: your current software cost
+                </h3>
+                <div class="space-y-1.5">
+                  <label
+                    for="currentSoftwareCostPerCamera"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Your current software cost per camera per month (optional)
+                  </label>
+                  <div class="relative rounded-lg shadow-sm max-w-xs">
+                    <div
+                      class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-sm"
+                    >
+                      $
+                    </div>
+                    <input
+                      id="currentSoftwareCostPerCamera"
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      max="1000"
+                      step="1"
+                      placeholder="e.g. 40"
+                      class="block w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    This is not included in the hardware savings above. We assume Sighthound software at
+                    <span class="font-medium">$30 / camera / month</span> when showing the optional software comparison.
                   </p>
                 </div>
               </div>
@@ -405,7 +442,7 @@
                     </div>
 
                     <div class="space-y-1">
-                      <dt class="text-xs text-slate-500 dark:text-slate-400">Cost per camera</dt>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">Cost per camera (hardware only)</dt>
                       <dd class="space-y-0.5">
                         <div class="flex items-center justify-between gap-2">
                           <span class="text-xs text-slate-500 dark:text-slate-400">Before</span>
@@ -428,6 +465,19 @@
                       </dd>
                     </div>
                   </dl>
+
+                  <!-- Optional software monthly comparison -->
+                  <div class="mt-4 border-t border-slate-200 pt-4 space-y-1 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    <p class="font-semibold text-slate-700 dark:text-slate-200">
+                      Software costs (monthly, optional estimate)
+                    </p>
+                    <p id="softwareCurrentMonthlyLine">Your software per month: –</p>
+                    <p id="softwareSighthoundMonthlyLine">Estimated Sighthound software per month: –</p>
+                    <p id="softwareDeltaMonthlyLine">Monthly software difference: –</p>
+                    <p>
+                      Software costs are <span class="font-semibold">not included</span> in the hardware totals or savings above.
+                    </p>
+                  </div>
                 </div>
 
                 <!-- CTA -->
@@ -482,10 +532,10 @@
 
     <script>
       // Constants (hidden from UI)
-      const CAMERAS_PER_NODE = 4;
-      const NODE_COST = 3500;
       const CONTACT_BASE_URL = "https://www.sighthound.com/contact-us";
       const SUPPORT_EMAIL = "support@sighthound.com";
+
+      const Calculator = window.SighthoundCalculator;
 
       // Theme toggle wiring
       const themeToggleButton = document.getElementById("themeToggle");
@@ -553,6 +603,9 @@
       const dumbCameraCostInput = document.getElementById("dumbCameraCost");
       const existingCamerasToggle = document.getElementById("existingCamerasToggle");
       const resetCalculatorButton = document.getElementById("resetCalculatorButton");
+      const currentSoftwareCostPerCameraInput = document.getElementById(
+        "currentSoftwareCostPerCamera"
+      );
 
       const defaultSmartCameraCost = smartCameraCostInput
         ? smartCameraCostInput.value
@@ -600,6 +653,15 @@
       );
       const costPerCameraAfterValue = document.getElementById(
         "costPerCameraAfterValue"
+      );
+      const softwareCurrentMonthlyLine = document.getElementById(
+        "softwareCurrentMonthlyLine"
+      );
+      const softwareSighthoundMonthlyLine = document.getElementById(
+        "softwareSighthoundMonthlyLine"
+      );
+      const softwareDeltaMonthlyLine = document.getElementById(
+        "softwareDeltaMonthlyLine"
       );
 
       function resetCtaLinks() {
@@ -675,20 +737,24 @@
             "Sighthound Compute Hardware savings calculator details:",
             "",
             `Total cameras: ${totalCameras.toLocaleString("en-US")}`,
-            `Smart camera cost (today): ${formatCurrency(smartCameraCost)}`,
-            `IP camera cost (with Sighthound): ${formatCurrency(
+            `Smart camera cost (today): ${Calculator.formatCurrency(
+              smartCameraCost
+            )}`,
+            `IP camera cost (with Sighthound): ${Calculator.formatCurrency(
               dumbCameraCost
             )}`,
             "",
             `Nodes required: ${nodesNeeded.toLocaleString("en-US")}`,
-            `Today total: ${formatCurrency(currentTotal)}`,
-            `Sighthound total: ${formatCurrency(sighthoundTotal)}`,
-            `Savings: ${formatCurrency(savings)} (${formatPercent(
+            `Today total: ${Calculator.formatCurrency(currentTotal)}`,
+            `Sighthound total: ${Calculator.formatCurrency(sighthoundTotal)}`,
+            `Savings: ${Calculator.formatCurrency(savings)} (${Calculator.formatPercent(
               percentReduction
             )})`,
             "",
-            `Cost per camera before: ${formatCurrency(costPerCameraBefore)}`,
-            `Cost per camera after: ${formatCurrency(costPerCameraAfter)}`,
+            `Cost per camera before: ${Calculator.formatCurrency(
+              costPerCameraBefore
+            )}`,
+            `Cost per camera after: ${Calculator.formatCurrency(costPerCameraAfter)}`,
             "",
             `Calculator link: ${window.location.href}`,
           ];
@@ -733,33 +799,6 @@
         });
       }
 
-      function formatCurrency(value) {
-        if (!isFinite(value)) return "$0.00";
-        return value.toLocaleString("en-US", {
-          style: "currency",
-          currency: "USD",
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      }
-
-      function formatPercent(value) {
-        if (!isFinite(value)) return "0.0%";
-        return `${value.toFixed(1)}%`;
-      }
-
-      function clamp(value, min, max) {
-        return Math.min(Math.max(value, min), max);
-      }
-
-      function parsePositiveNumber(input, min, max, isInteger) {
-        const raw = input.value.trim();
-        if (!raw) return null;
-        let num = isInteger ? parseInt(raw, 10) : parseFloat(raw);
-        if (!isFinite(num) || num < min || num > max) return null;
-        if (isInteger) num = Math.round(num);
-        return clamp(num, min, max);
-      }
 
       function resetCalculator() {
         if (totalCamerasInput) {
@@ -777,54 +816,83 @@
         if (existingCamerasToggle) {
           existingCamerasToggle.checked = false;
         }
+        if (currentSoftwareCostPerCameraInput) {
+          currentSoftwareCostPerCameraInput.value = "";
+        }
         clearUrlParams();
         updateResults();
       }
 
       function updateResults() {
-        const totalCameras = parsePositiveNumber(
-          totalCamerasInput,
-          1,
-          10000,
-          true
-        );
-        const smartCameraCost = parsePositiveNumber(
-          smartCameraCostInput,
-          1,
-          10000,
-          false
-        );
-        const dumbCameraCost = parsePositiveNumber(
-          dumbCameraCostInput,
-          1,
-          10000,
-          false
-        );
         const hasExistingCameras = existingCamerasToggle
           ? existingCamerasToggle.checked
           : false;
 
-        if (
-          totalCameras === null ||
-          smartCameraCost === null ||
-          dumbCameraCost === null
-        ) {
+        const currentSoftwarePerCameraRaw = currentSoftwareCostPerCameraInput
+          ? currentSoftwareCostPerCameraInput.value
+          : "";
+        const currentSoftwarePerCamera = currentSoftwarePerCameraRaw.trim()
+          ? Number(currentSoftwarePerCameraRaw)
+          : null;
+
+        const totalCamerasRaw = totalCamerasInput ? totalCamerasInput.value : "";
+        const smartCameraCostRaw = smartCameraCostInput
+          ? smartCameraCostInput.value
+          : "";
+        const dumbCameraCostRaw = dumbCameraCostInput
+          ? dumbCameraCostInput.value
+          : "";
+
+        const baseResult = Calculator.computeTotalsFromRaw({
+          totalCamerasRaw,
+          smartCameraCostRaw,
+          dumbCameraCostRaw,
+        });
+
+        if (!baseResult.ok) {
           resultsPanel.classList.add("hidden");
           resultsPlaceholder.classList.remove("hidden");
           resetCtaLinks();
           return;
         }
 
-        const nodesNeeded = Math.ceil(totalCameras / CAMERAS_PER_NODE);
-        const currentTotal = totalCameras * smartCameraCost;
+        const {
+          totalCameras,
+          smartCameraCost,
+          dumbCameraCost,
+          nodesNeeded,
+          currentTotal,
+        } = baseResult.values;
+
         const sighthoundCameraHardwareTotal = hasExistingCameras
           ? 0
           : totalCameras * dumbCameraCost;
-        const sighthoundTotal = nodesNeeded * NODE_COST + sighthoundCameraHardwareTotal;
+        const sighthoundTotal =
+          nodesNeeded * Calculator.NODE_COST + sighthoundCameraHardwareTotal;
         const savings = currentTotal - sighthoundTotal;
-        const percentReduction = (savings / currentTotal) * 100;
-        const costPerCameraBefore = currentTotal / totalCameras;
-        const costPerCameraAfter = sighthoundTotal / totalCameras;
+        const percentReduction =
+          currentTotal === 0 ? 0 : (savings / currentTotal) * 100;
+        const costPerCameraBefore =
+          totalCameras === 0 ? 0 : currentTotal / totalCameras;
+        const costPerCameraAfter =
+          totalCameras === 0 ? 0 : sighthoundTotal / totalCameras;
+
+        // Optional software monthly comparison (does not affect hardware totals)
+        let softwareCurrentMonthly = null;
+        let softwareSighthoundMonthly = null;
+        let softwareDeltaMonthly = null;
+
+        if (
+          currentSoftwarePerCamera !== null &&
+          Number.isFinite(currentSoftwarePerCamera) &&
+          currentSoftwarePerCamera >= 0
+        ) {
+          softwareCurrentMonthly = totalCameras * currentSoftwarePerCamera;
+          softwareSighthoundMonthly =
+            totalCameras * Calculator.SIGHTHOUND_SOFTWARE_COST_PER_CAMERA;
+          softwareDeltaMonthly =
+            softwareCurrentMonthly - softwareSighthoundMonthly;
+        }
 
         // Toggle panels
         resultsPlaceholder.classList.add("hidden");
@@ -839,7 +907,7 @@
         primaryLabel.textContent = isSavingsPositiveOrZero
           ? "Savings vs today"
           : "Extra cost vs today";
-        primaryValue.textContent = formatCurrency(Math.abs(savings));
+        primaryValue.textContent = Calculator.formatCurrency(Math.abs(savings));
 
         // Primary arrow styling (down = good / up = bad)
         primaryArrow.className =
@@ -853,19 +921,19 @@
           (isSavingsPositiveOrZero ? "" : " rotate-180");
 
         // Comparison block
-        currentTotalValue.textContent = formatCurrency(currentTotal);
-        sighthoundTotalValue.textContent = formatCurrency(sighthoundTotal);
+        currentTotalValue.textContent = Calculator.formatCurrency(currentTotal);
+        sighthoundTotalValue.textContent = Calculator.formatCurrency(sighthoundTotal);
 
         if (todayBreakdownLine) {
           todayBreakdownLine.textContent = `Cameras: ${totalCameras.toLocaleString(
             "en-US"
-          )} × ${formatCurrency(smartCameraCost)}`;
+          )} × ${Calculator.formatCurrency(smartCameraCost)}`;
         }
 
         if (sighthoundBreakdownNodes) {
           sighthoundBreakdownNodes.textContent = `Compute Nodes: ${nodesNeeded.toLocaleString(
             "en-US"
-          )} 2 ${formatCurrency(NODE_COST)}`;
+          )} x ${Calculator.formatCurrency(Calculator.NODE_COST)}`;
         }
 
         if (sighthoundBreakdownCameras) {
@@ -875,14 +943,14 @@
           } else {
             sighthoundBreakdownCameras.textContent = `Cameras: ${totalCameras.toLocaleString(
               "en-US"
-            )} 2 ${formatCurrency(dumbCameraCost)}`;
+            )} x ${Calculator.formatCurrency(dumbCameraCost)}`;
           }
         }
 
         // Secondary metrics
         nodesNeededValue.textContent = nodesNeeded.toLocaleString("en-US");
 
-        percentReductionValue.textContent = formatPercent(percentReduction);
+        percentReductionValue.textContent = Calculator.formatPercent(percentReduction);
         percentReductionValue.className =
           "font-medium tabular-nums " +
           (isSavingsPositiveOrZero ? "text-emerald-600" : "text-rose-600");
@@ -900,10 +968,46 @@
             (isSavingsPositiveOrZero ? "" : " rotate-180");
         }
 
-        costPerCameraBeforeValue.textContent = formatCurrency(
+        costPerCameraBeforeValue.textContent = Calculator.formatCurrency(
           costPerCameraBefore
         );
-        costPerCameraAfterValue.textContent = formatCurrency(costPerCameraAfter);
+        costPerCameraAfterValue.textContent = Calculator.formatCurrency(
+          costPerCameraAfter
+        );
+
+        // Update optional software comparison lines
+        if (
+          softwareCurrentMonthlyLine &&
+          softwareSighthoundMonthlyLine &&
+          softwareDeltaMonthlyLine
+        ) {
+          if (
+            softwareCurrentMonthly !== null &&
+            softwareSighthoundMonthly !== null &&
+            softwareDeltaMonthly !== null
+          ) {
+            softwareCurrentMonthlyLine.textContent =
+              "Your software per month: " +
+              Calculator.formatCurrency(softwareCurrentMonthly);
+            softwareSighthoundMonthlyLine.textContent =
+              "Estimated Sighthound software per month: " +
+              Calculator.formatCurrency(softwareSighthoundMonthly);
+            const deltaLabelPrefix =
+              softwareDeltaMonthly >= 0
+                ? "Monthly software difference (extra cost): "
+                : "Monthly software difference (savings): ";
+            softwareDeltaMonthlyLine.textContent =
+              deltaLabelPrefix +
+              Calculator.formatCurrency(Math.abs(softwareDeltaMonthly));
+          } else {
+            softwareCurrentMonthlyLine.textContent =
+              "Your software per month: –";
+            softwareSighthoundMonthlyLine.textContent =
+              "Estimated Sighthound software per month: –";
+            softwareDeltaMonthlyLine.textContent =
+              "Monthly software difference: –";
+          }
+        }
 
         updateCtaLinks({
           totalCameras,
@@ -946,7 +1050,9 @@
         totalCamerasInput,
         smartCameraCostInput,
         dumbCameraCostInput,
+        currentSoftwareCostPerCameraInput,
       ].forEach((input) => {
+        if (!input) return;
         input.addEventListener("input", updateResults);
         input.addEventListener("change", updateResults);
       });

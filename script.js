@@ -2,6 +2,7 @@ const CAMERAS_PER_NODE = 4;
 const NODE_COST = 3500;
 const DEFAULT_SMART_CAMERA_COST = 3000;
 const DEFAULT_DUMB_CAMERA_COST = 250;
+const SIGHTHOUND_SOFTWARE_COST_PER_CAMERA = 30; // USD per camera per month
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -139,212 +140,24 @@ function computeTotalsFromRaw({ totalCamerasRaw, smartCameraCostRaw, dumbCameraC
   };
 }
 
-// Browser-only wiring for DOM interaction.
-if (typeof document !== 'undefined') {
-  const form = document.getElementById('calculator-form');
-  const errorEl = document.getElementById('error');
-
-  // Theme toggle
-  const themeToggleButton = document.getElementById('themeToggle');
-  const themeToggleLabel = document.getElementById('themeToggleLabel');
-  const headerLogo = document.getElementById('headerLogo');
-
-  function setTheme(theme) {
-    const root = document.documentElement;
-    if (!root) return;
-
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      try {
-        localStorage.setItem('theme', 'dark');
-      } catch (e) {}
-      if (themeToggleButton) themeToggleButton.setAttribute('aria-pressed', 'true');
-      if (themeToggleLabel) themeToggleLabel.textContent = 'Light mode';
-    } else {
-      root.classList.remove('dark');
-      try {
-        localStorage.setItem('theme', 'light');
-      } catch (e) {}
-      if (themeToggleButton) themeToggleButton.setAttribute('aria-pressed', 'false');
-      if (themeToggleLabel) themeToggleLabel.textContent = 'Dark mode';
-    }
-
-    // Swap header logo based on theme, if both variants are available
-    if (headerLogo) {
-      const lightSrc = headerLogo.getAttribute('data-logo-light');
-      const darkSrc = headerLogo.getAttribute('data-logo-dark');
-      if (theme === 'dark' && darkSrc) {
-        headerLogo.src = darkSrc;
-      } else if (theme === 'light' && lightSrc) {
-        headerLogo.src = lightSrc;
-      }
-    }
-  }
-
-  // Initialise theme from saved preference or OS setting
-  (function initTheme() {
-    try {
-      const stored = localStorage.getItem('theme');
-      const prefersDark =
-        window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initial = stored || (prefersDark ? 'dark' : 'light');
-      setTheme(initial);
-    } catch (e) {
-      setTheme('light');
-    }
-  })();
-
-  if (themeToggleButton) {
-    themeToggleButton.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(isDark ? 'light' : 'dark');
-    });
-  }
-
-  // Results DOM elements
-  const currentTotalEl = document.getElementById('currentTotal');
-  const sighthoundTotalEl = document.getElementById('sighthoundTotal');
-  const savingsEl = document.getElementById('savings');
-  const percentReductionEl = document.getElementById('percentReduction');
-  const costPerCameraBeforeEl = document.getElementById('costPerCameraBefore');
-  const costPerCameraAfterEl = document.getElementById('costPerCameraAfter');
-  const nodesNeededEl = document.getElementById('nodesNeeded');
-
-  const todayBreakdownEl = document.getElementById('todayBreakdown');
-  const sighthoundNodesBreakdownEl = document.getElementById('sighthoundNodesBreakdown');
-  const sighthoundCamerasBreakdownEl = document.getElementById('sighthoundCamerasBreakdown');
-
-  const primaryArrowEl = document.getElementById('primaryArrow');
-  const percentArrowEl = document.getElementById('percentArrow');
-
-  const resultsPlaceholderEl = document.getElementById('resultsPlaceholder');
-  const resultsCardsEl = document.getElementById('resultsCards');
-  const savingsLabelEl = document.getElementById('savingsLabel');
-
-  function showError(message) {
-    if (errorEl) {
-      errorEl.textContent = message || '';
-    }
-  }
-
-  function showPlaceholder() {
-    if (resultsPlaceholderEl && resultsCardsEl) {
-      resultsPlaceholderEl.classList.remove('hidden');
-      resultsCardsEl.classList.add('hidden');
-    }
-  }
-
-  function showResults() {
-    if (resultsPlaceholderEl && resultsCardsEl) {
-      resultsPlaceholderEl.classList.add('hidden');
-      resultsCardsEl.classList.remove('hidden');
-    }
-  }
-
-  if (form) {
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      showError('');
-
-      const totalCamerasRaw = form.totalCameras.value.trim();
-      const smartCameraRaw = form.smartCameraCost.value;
-      const dumbCameraRaw = form.dumbCameraCost.value;
-
-      const result = computeTotalsFromRaw({
-        totalCamerasRaw,
-        smartCameraCostRaw: smartCameraRaw,
-        dumbCameraCostRaw: dumbCameraRaw,
-      });
-
-      if (!result.ok) {
-        if (result.reason === 'emptyTotalCameras') {
-          showPlaceholder();
-          return;
-        }
-
-        if (result.errorMessage) {
-          showError(result.errorMessage);
-        }
-        showPlaceholder();
-        return;
-      }
-
-      const {
-        totalCameras,
-        smartCameraCost,
-        dumbCameraCost,
-        nodesNeeded,
-        currentTotal,
-        sighthoundTotal,
-        savings,
-        percentReduction,
-        costPerCameraBefore,
-        costPerCameraAfter,
-      } = result.values;
-
-      // Update main totals
-      if (nodesNeededEl) nodesNeededEl.textContent = nodesNeeded.toString();
-      if (currentTotalEl) currentTotalEl.textContent = formatCurrency(currentTotal);
-      if (sighthoundTotalEl) sighthoundTotalEl.textContent = formatCurrency(sighthoundTotal);
-
-      // Primary callout uses absolute savings amount
-      const savingsDisplay = Math.abs(savings);
-      if (savingsEl) savingsEl.textContent = formatCurrency(savingsDisplay);
-
-      if (percentReductionEl) percentReductionEl.textContent = formatPercent(percentReduction);
-      if (costPerCameraBeforeEl) costPerCameraBeforeEl.textContent = formatCurrency(costPerCameraBefore);
-      if (costPerCameraAfterEl) costPerCameraAfterEl.textContent = formatCurrency(costPerCameraAfter);
-
-      // Comparison breakdown lines
-      if (todayBreakdownEl) {
-        todayBreakdownEl.textContent = `Cameras: ${totalCameras} × ${formatCurrency(smartCameraCost)}`;
-      }
-      if (sighthoundNodesBreakdownEl) {
-        sighthoundNodesBreakdownEl.textContent = `Nodes: ${nodesNeeded} × ${formatCurrency(NODE_COST)}`;
-      }
-      if (sighthoundCamerasBreakdownEl) {
-        sighthoundCamerasBreakdownEl.textContent = `Cameras: ${totalCameras} × ${formatCurrency(dumbCameraCost)}`;
-      }
-
-      // Update savings label, color, and arrow based on sign
-      if (savingsLabelEl && savingsEl && primaryArrowEl) {
-        if (savings < 0) {
-          savingsLabelEl.textContent = 'Extra cost';
-          savingsEl.classList.remove('text-emerald-400');
-          savingsEl.classList.add('text-red-400');
-          primaryArrowEl.textContent = '↑';
-          primaryArrowEl.classList.remove('text-emerald-400');
-          primaryArrowEl.classList.add('text-red-400');
-        } else {
-          savingsLabelEl.textContent = 'Immediate savings';
-          savingsEl.classList.remove('text-red-400');
-          savingsEl.classList.add('text-emerald-400');
-          primaryArrowEl.textContent = '↓';
-          primaryArrowEl.classList.remove('text-red-400');
-          primaryArrowEl.classList.add('text-emerald-400');
-        }
-      }
-
-      // Percent reduction arrow and color
-      if (percentReductionEl && percentArrowEl) {
-        if (percentReduction < 0) {
-          percentReductionEl.classList.remove('text-emerald-600');
-          percentReductionEl.classList.add('text-red-600');
-          percentArrowEl.textContent = '↑';
-          percentArrowEl.classList.remove('text-emerald-600');
-          percentArrowEl.classList.add('text-red-600');
-        } else {
-          percentReductionEl.classList.remove('text-red-600');
-          percentReductionEl.classList.add('text-emerald-600');
-          percentArrowEl.textContent = '↓';
-          percentArrowEl.classList.remove('text-red-600');
-          percentArrowEl.classList.add('text-emerald-600');
-        }
-      }
-
-      showResults();
-    });
-  }
+// Attach helpers to window for browser usage.
+if (typeof window !== 'undefined') {
+  window.SighthoundCalculator = {
+    CAMERAS_PER_NODE,
+    NODE_COST,
+    DEFAULT_SMART_CAMERA_COST,
+    DEFAULT_DUMB_CAMERA_COST,
+    SIGHTHOUND_SOFTWARE_COST_PER_CAMERA,
+    formatCurrency,
+    formatPercent,
+    parseNumberValue,
+    calculateNodesNeeded,
+    calculateCurrentTotal,
+    calculateSighthoundTotal,
+    calculateSavings,
+    validateInputs,
+    computeTotalsFromRaw,
+  };
 }
 
 // Export pure helpers for unit testing in Node.
@@ -354,6 +167,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NODE_COST,
     DEFAULT_SMART_CAMERA_COST,
     DEFAULT_DUMB_CAMERA_COST,
+    SIGHTHOUND_SOFTWARE_COST_PER_CAMERA,
     formatCurrency,
     formatPercent,
     parseNumberValue,
