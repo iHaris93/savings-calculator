@@ -367,3 +367,38 @@ This calculator prioritizes **clarity, trust, and correctness** over visual flas
 - Negative outcomes should be shown just as honestly as positive ones.
 
 Because this tool is often used live in sales conversations and demos, small changes to copy, math, or layout can have outsized impact on how Sighthound’s value is perceived. When in doubt, favor transparency and simplicity, and keep this README up to date with any behavior changes.
+
+---
+
+## GitHub Pages & Squarespace embedding
+
+- Enable GitHub Pages for this repository:
+  - In GitHub, go to **Settings → Pages**.
+  - Under **Source**, choose **Deploy from branch**.
+  - Select the `main` branch and `/ (root)` folder.
+- Expected public URL:
+  - `https://iharis93.github.io/savings-calculator/`
+- The app uses **relative paths** for local assets (no leading `/`), so it works correctly when served from `/savings-calculator/` on GitHub Pages and inside an `<iframe>` on another site.
+
+Squarespace embed example:
+
+```html
+<iframe
+  src="https://iharis93.github.io/savings-calculator/"
+  style="width: 100%; min-height: 700px; border: 0;"
+  loading="lazy"
+></iframe>
+```
+
+- In Squarespace, add a **Code** block and paste the `<iframe>` snippet.
+- If you change the GitHub Pages settings or repository name, update the `src` URL to match.
+
+## 11) Changelog
+
+- **2026-01-13**
+  - Clarified the top-of-page hero copy to explain the calculator in one sentence.
+  - Added a compact "Step 1 / Step 2" strip under *How this works* and a note that results update instantly.
+  - Marked the **Total cameras** input as *Required* and the software cost field as *Optional* in the UI.
+  - Improved savings card visual states so positive savings vs extra cost are clearly distinguished by color and background.
+  - Tightened the existing cameras toggle helper text to make reuse of standard IP cameras explicit.
+  - Made the optional monthly software comparison section appear only when a software cost per camera is provided, and documented this behavior.
