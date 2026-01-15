@@ -37,6 +37,98 @@
       h6 {
         font-family: var(--font-heading);
       }
+
+      /* Screen/print helpers */
+      .no-print {
+      }
+
+      .print-only {
+        display: none;
+      }
+
+      @media print {
+        @page {
+          size: auto;
+          margin: 0.5in;
+        }
+
+        body {
+          background: #ffffff;
+          font-size: 0.8rem;
+        }
+
+        h1 {
+          font-size: 1.15rem;
+        }
+
+        h2,
+        h3 {
+          font-size: 0.95rem;
+        }
+
+        .no-print {
+          display: none !important;
+        }
+
+        .print-only {
+          display: block !important;
+        }
+
+        /* Tighter layout for PDF */
+        .max-w-6xl {
+          max-width: 7.5in !important;
+          padding-top: 0.25rem !important;
+          padding-bottom: 0.25rem !important;
+        }
+
+        main {
+          padding: 0 !important;
+        }
+
+        /* Force two-column layout and tighter gaps for main grid */
+        #layoutGrid {
+          grid-template-columns: 1.05fr 1.05fr !important;
+          column-gap: 0.5rem !important;
+          row-gap: 0.5rem !important;
+          align-items: flex-start !important;
+        }
+
+        /* Compact cards and sections */
+        .bg-slate-50,
+        .bg-white,
+        .bg-gradient-to-br,
+        .bg-gradient-to-r {
+          padding-top: 0.6rem !important;
+          padding-bottom: 0.6rem !important;
+          padding-left: 0.75rem !important;
+          padding-right: 0.75rem !important;
+        }
+
+        .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+          --tw-space-y-reverse: 0;
+          margin-top: calc(0.6rem * calc(1 - var(--tw-space-y-reverse))) !important;
+          margin-bottom: calc(0.6rem * var(--tw-space-y-reverse)) !important;
+        }
+
+        .mt-4 {
+          margin-top: 0.5rem !important;
+        }
+
+        .mb-6 {
+          margin-bottom: 0.75rem !important;
+        }
+
+        .py-8,
+        .sm\:py-10 {
+          padding-top: 0.75rem !important;
+          padding-bottom: 0.75rem !important;
+        }
+
+        .text-3xl,
+        .text-4xl {
+          font-size: 1.35rem !important;
+        }
+      }
     </style>
   </head>
   <body class="min-h-screen bg-white text-slate-900 antialiased">
@@ -44,7 +136,7 @@
       <!-- Main content -->
       <main class="flex-1">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-          <div class="mb-6 space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300">
+          <div class="mb-6 space-y-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 no-print">
             <p>
               Most AI camera deployments push compute into every camera. That works, but it’s often expensive and inflexible.
             </p>
@@ -55,7 +147,7 @@
               Use this calculator to compare upfront hardware costs side by side.
             </p>
           </div>
-          <section class="mb-6 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+          <section class="mb-6 space-y-2 text-sm text-slate-600 dark:text-slate-300 no-print">
             <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-50">
               How this works
             </h2>
@@ -75,7 +167,7 @@
               </span>
             </div>
           </section>
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+          <div id="layoutGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
             <!-- Inputs column -->
             <section class="bg-slate-50 rounded-xl shadow-md border border-slate-200/80 p-5 sm:p-6 space-y-5">
               <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">
@@ -232,6 +324,15 @@
 
             <!-- Results column -->
             <section class="space-y-4">
+              <!-- Print-only header for PDF/Print view -->
+              <div class="print-only mb-4">
+                <h1 class="text-xl font-semibold text-slate-900">
+                  Hardware savings estimate
+                </h1>
+                <p class="mt-1 text-xs text-slate-500">
+                  Generated with the Sighthound hardware savings calculator.
+                </p>
+              </div>
               <!-- Placeholder state -->
               <div
                 id="resultsPlaceholder"
@@ -492,7 +593,7 @@
 
                 <!-- CTA -->
                 <aside
-                  class="rounded-xl shadow-sm border border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100/80 p-5 sm:p-6 flex flex-col gap-3 dark:border-slate-700 dark:from-slate-900 dark:to-slate-900"
+                  class="rounded-xl shadow-sm border border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100/80 p-5 sm:p-6 flex flex-col gap-3 dark:border-slate-700 dark:from-slate-900 dark:to-slate-900 no-print"
                 >
                   <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-50">
                     Ready to order your trial kit?
@@ -512,6 +613,13 @@
                     </span>
                   </label>
                   <div class="mt-2 flex flex-col gap-2">
+                    <button
+                      id="downloadPdfButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"
+                    >
+                      Download estimate as PDF
+                    </button>
                     <a
                       id="primaryCtaLink"
                       href="https://www.sighthound.com/contact-us"
@@ -616,6 +724,57 @@
       const softwareDeltaMonthlyLine = document.getElementById(
         "softwareDeltaMonthlyLine"
       );
+      const downloadPdfButton = document.getElementById("downloadPdfButton");
+
+      // Keep track of the last numeric results so we can animate between states
+      let lastResults = null;
+
+      // Utility to animate numeric changes like a fast odometer
+      function animateNumberChange(
+        el,
+        previousValue,
+        nextValue,
+        formatFn,
+        options = {}
+      ) {
+        if (!el || typeof formatFn !== "function") {
+          return;
+        }
+
+        const duration = options.duration ?? 350;
+
+        if (
+          previousValue === null ||
+          previousValue === undefined ||
+          !Number.isFinite(previousValue)
+        ) {
+          el.textContent = formatFn(nextValue);
+          return;
+        }
+
+        if (!Number.isFinite(nextValue) || previousValue === nextValue) {
+          el.textContent = formatFn(nextValue);
+          return;
+        }
+
+        const start = performance.now();
+        const startVal = previousValue;
+        const delta = nextValue - startVal;
+
+        function frame(now) {
+          const elapsed = now - start;
+          const t = Math.min(1, elapsed / duration);
+          const eased = 1 - Math.pow(1 - t, 3); // ease-out
+          const current = startVal + delta * eased;
+          el.textContent = formatFn(current);
+
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          }
+        }
+
+        requestAnimationFrame(frame);
+      }
 
       function resetCtaLinks() {
         if (primaryCtaLink) {
@@ -740,6 +899,12 @@
         resetCalculatorButton.addEventListener("click", resetCalculator);
       }
 
+      if (downloadPdfButton) {
+        downloadPdfButton.addEventListener("click", () => {
+          window.print();
+        });
+      }
+
       if (shareDetailsCheckbox) {
         shareDetailsCheckbox.addEventListener("change", () => {
           updateResults();
@@ -853,6 +1018,23 @@
             softwareCurrentMonthly - softwareSighthoundMonthly;
         }
 
+        const previousResults = lastResults;
+        lastResults = {
+          totalCameras,
+          smartCameraCost,
+          dumbCameraCost,
+          nodesNeeded,
+          currentTotal,
+          sighthoundTotal,
+          savings,
+          percentReduction,
+          costPerCameraBefore,
+          costPerCameraAfter,
+          softwareCurrentMonthly,
+          softwareSighthoundMonthly,
+          softwareDeltaMonthly,
+        };
+
         // Toggle panels
         resultsPlaceholder.classList.add("hidden");
         resultsPanel.classList.remove("hidden");
@@ -866,7 +1048,12 @@
         primaryLabel.textContent = isSavingsPositiveOrZero
           ? "Savings vs today"
           : "Extra cost vs today";
-        primaryValue.textContent = Calculator.formatCurrency(Math.abs(savings));
+        animateNumberChange(
+          primaryValue,
+          previousResults ? Math.abs(previousResults.savings ?? 0) : null,
+          Math.abs(savings),
+          (val) => Calculator.formatCurrency(val)
+        );
 
         if (primaryCard) {
           primaryCard.className =
@@ -904,19 +1091,41 @@
           (isSavingsPositiveOrZero ? "" : " rotate-180");
 
         // Comparison block
-        currentTotalValue.textContent = Calculator.formatCurrency(currentTotal);
-        sighthoundTotalValue.textContent = Calculator.formatCurrency(sighthoundTotal);
+        animateNumberChange(
+          currentTotalValue,
+          previousResults ? previousResults.currentTotal : null,
+          currentTotal,
+          (val) => Calculator.formatCurrency(val)
+        );
+        animateNumberChange(
+          sighthoundTotalValue,
+          previousResults ? previousResults.sighthoundTotal : null,
+          sighthoundTotal,
+          (val) => Calculator.formatCurrency(val)
+        );
 
         if (todayBreakdownLine) {
-          todayBreakdownLine.textContent = `Cameras: ${totalCameras.toLocaleString(
-            "en-US"
-          )} × ${Calculator.formatCurrency(smartCameraCost)}`;
+          animateNumberChange(
+            todayBreakdownLine,
+            previousResults ? previousResults.totalCameras : null,
+            totalCameras,
+            (val) =>
+              `Cameras: ${Math.round(val).toLocaleString(
+                "en-US"
+              )} × ${Calculator.formatCurrency(smartCameraCost)}`
+          );
         }
 
         if (sighthoundBreakdownNodes) {
-          sighthoundBreakdownNodes.textContent = `Compute Nodes: ${nodesNeeded.toLocaleString(
-            "en-US"
-          )} x ${Calculator.formatCurrency(Calculator.NODE_COST)}`;
+          animateNumberChange(
+            sighthoundBreakdownNodes,
+            previousResults ? previousResults.nodesNeeded : null,
+            nodesNeeded,
+            (val) =>
+              `Compute Nodes: ${Math.round(val).toLocaleString(
+                "en-US"
+              )} x ${Calculator.formatCurrency(Calculator.NODE_COST)}`
+          );
         }
 
         if (sighthoundBreakdownCameras) {
@@ -924,16 +1133,32 @@
             sighthoundBreakdownCameras.textContent =
               "Cameras: existing standard IP cameras (no new hardware cost)";
           } else {
-            sighthoundBreakdownCameras.textContent = `Cameras: ${totalCameras.toLocaleString(
-              "en-US"
-            )} x ${Calculator.formatCurrency(dumbCameraCost)}`;
+            animateNumberChange(
+              sighthoundBreakdownCameras,
+              previousResults ? previousResults.totalCameras : null,
+              totalCameras,
+              (val) =>
+                `Cameras: ${Math.round(val).toLocaleString(
+                  "en-US"
+                )} x ${Calculator.formatCurrency(dumbCameraCost)}`
+            );
           }
         }
 
         // Secondary metrics
-        nodesNeededValue.textContent = nodesNeeded.toLocaleString("en-US");
+        animateNumberChange(
+          nodesNeededValue,
+          previousResults ? previousResults.nodesNeeded : null,
+          nodesNeeded,
+          (val) => Math.round(val).toLocaleString("en-US")
+        );
 
-        percentReductionValue.textContent = Calculator.formatPercent(percentReduction);
+        animateNumberChange(
+          percentReductionValue,
+          previousResults ? previousResults.percentReduction : null,
+          percentReduction,
+          (val) => Calculator.formatPercent(val)
+        );
         percentReductionValue.className =
           "font-medium tabular-nums " +
           (isSavingsPositiveOrZero ? "text-emerald-600" : "text-rose-600");
@@ -951,11 +1176,17 @@
             (isSavingsPositiveOrZero ? "" : " rotate-180");
         }
 
-        costPerCameraBeforeValue.textContent = Calculator.formatCurrency(
-          costPerCameraBefore
+        animateNumberChange(
+          costPerCameraBeforeValue,
+          previousResults ? previousResults.costPerCameraBefore : null,
+          costPerCameraBefore,
+          (val) => Calculator.formatCurrency(val)
         );
-        costPerCameraAfterValue.textContent = Calculator.formatCurrency(
-          costPerCameraAfter
+        animateNumberChange(
+          costPerCameraAfterValue,
+          previousResults ? previousResults.costPerCameraAfter : null,
+          costPerCameraAfter,
+          (val) => Calculator.formatCurrency(val)
         );
 
         // Update optional software comparison lines
@@ -971,19 +1202,32 @@
             softwareDeltaMonthly !== null
           ) {
             softwareComparison.classList.remove("hidden");
-            softwareCurrentMonthlyLine.textContent =
-              "Your software per month: " +
-              Calculator.formatCurrency(softwareCurrentMonthly);
-            softwareSighthoundMonthlyLine.textContent =
-              "Estimated Sighthound software per month: " +
-              Calculator.formatCurrency(softwareSighthoundMonthly);
+            animateNumberChange(
+              softwareCurrentMonthlyLine,
+              previousResults ? previousResults.softwareCurrentMonthly : null,
+              softwareCurrentMonthly,
+              (val) =>
+                "Your software per month: " +
+                Calculator.formatCurrency(val)
+            );
+            animateNumberChange(
+              softwareSighthoundMonthlyLine,
+              previousResults ? previousResults.softwareSighthoundMonthly : null,
+              softwareSighthoundMonthly,
+              (val) =>
+                "Estimated Sighthound software per month: " +
+                Calculator.formatCurrency(val)
+            );
             const isSoftwareSavings = softwareDeltaMonthly < 0;
             const deltaLabelPrefix = isSoftwareSavings
               ? "Monthly software difference (savings): "
               : "Monthly software difference (extra cost): ";
-            softwareDeltaMonthlyLine.textContent =
-              deltaLabelPrefix +
-              Calculator.formatCurrency(Math.abs(softwareDeltaMonthly));
+            animateNumberChange(
+              softwareDeltaMonthlyLine,
+              previousResults ? Math.abs(previousResults.softwareDeltaMonthly ?? 0) : null,
+              Math.abs(softwareDeltaMonthly),
+              (val) => deltaLabelPrefix + Calculator.formatCurrency(val)
+            );
             softwareDeltaMonthlyLine.className =
               "font-semibold " +
               (isSoftwareSavings
