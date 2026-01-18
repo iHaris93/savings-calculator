@@ -9,6 +9,8 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 ## Standards
 
 **Commits**: **MUST** use Conventional Commits format: `type(scope): description`
+**Changelog**: **MUST** follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format
+**Versioning**: **SHOULD** follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (SemVer)
 **Safety**: **MUST NOT** use `git reset --hard` or force-push without explicit permission
 **Workflow**: **MUST** make small, reversible changes; **MUST NOT** introduce silent breaking behavior
 **History**: **SHOULD** maintain linear history; **SHOULD** rebase over merge for feature branches (with permission)
@@ -306,9 +308,69 @@ git checkout <commit>                # Restore lost commit
 git switch -c recovery-branch        # Create branch from it
 ```
 
+## Changelog & Versioning
+
+### Changelog Format
+
+**MUST** follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format:
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- New features
+
+### Changed
+- Changes in existing functionality
+
+### Deprecated
+- Soon-to-be removed features
+
+### Removed
+- Removed features
+
+### Fixed
+- Bug fixes
+
+### Security
+- Security vulnerabilities
+
+## [1.0.0] - 2024-01-18
+
+### Added
+- Initial release
+```
+
+### Semantic Versioning
+
+**SHOULD** follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
+
+- **MAJOR** (X.0.0): Breaking changes, incompatible API changes
+- **MINOR** (0.X.0): New features, backward compatible
+- **PATCH** (0.0.X): Bug fixes, backward compatible
+
+**Examples**:
+- `v1.0.0` → `v2.0.0`: Breaking changes (removed API, changed behavior)
+- `v1.0.0` → `v1.1.0`: New feature added (backward compatible)
+- `v1.0.0` → `v1.0.1`: Bug fix (no API changes)
+
+**Pre-release versions**:
+- `v1.0.0-alpha.1`: Alpha release
+- `v1.0.0-beta.2`: Beta release
+- `v1.0.0-rc.1`: Release candidate
+
 ## Compliance
 
 - **MUST** use Conventional Commits for all commits: `type(scope): description`
+- **MUST** maintain CHANGELOG.md following Keep a Changelog format
+- **SHOULD** use Semantic Versioning for releases
 - **MUST NOT** force-push or `reset --hard` without explicit permission
 - **MUST** run `task check` before committing
 - **MUST** use `git --no-pager` for programmatic/scripted operations

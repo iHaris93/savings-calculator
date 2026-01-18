@@ -12,7 +12,8 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 **Issues**: **SHOULD** include clear reproduction steps, expected vs actual behavior, environment details
 **Reviews**: **SHOULD** provide constructive feedback; **MUST** use appropriate status (approve/request changes/comment)
 **Actions**: **SHOULD** provide fast feedback, fail fast, cache dependencies, use matrix testing
-**Releases**: **MUST** use semantic versioning; **SHOULD** include changelogs and release notes
+**Releases**: **SHOULD** use [Semantic Versioning](https://semver.org/spec/v2.0.0.html); **MUST** include CHANGELOG.md following [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format
+**Changelog**: **MUST** follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format in CHANGELOG.md
 
 ## gh CLI Commands
 
@@ -96,11 +97,17 @@ gh run download 789                  # Download artifacts
 
 ```bash
 gh release create v1.0.0             # Create release
+gh release create v1.0.0 --title "Release v1.0.0" --notes-file CHANGELOG.md # With changelog
 gh release create v1.0.0 --generate-notes # Auto-generate notes
 gh release list                      # List releases
 gh release view v1.0.0               # View release
 gh release download v1.0.0           # Download assets
 gh release delete v1.0.0             # Delete release
+```
+
+**Best Practice**: Always create releases with CHANGELOG.md content:
+```bash
+gh release create v1.0.0 --title "Project v1.0.0" --notes-file CHANGELOG.md
 ```
 
 ### Search & Browse
@@ -566,12 +573,15 @@ git push
 
 ## Compliance
 
-- Use Conventional Commits for all PR titles
-- Maintain ≥75% test coverage
-- Pass all CI checks before merge
-- Request reviews from appropriate team members
-- Link PRs to related issues
-- Use gh CLI for automation where possible
-- Never force-push to protected branches
-- Keep PR scope focused and size reasonable
-- Update documentation with code changes
+- **MUST** use Conventional Commits for all PR titles
+- **MUST** maintain CHANGELOG.md following [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format
+- **SHOULD** use [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for releases
+- **MUST** include CHANGELOG.md content in release notes
+- **MUST** maintain ≥75% test coverage
+- **MUST** pass all CI checks before merge
+- **SHOULD** request reviews from appropriate team members
+- **SHOULD** link PRs to related issues
+- **SHOULD** use gh CLI for automation where possible
+- **MUST NOT** force-push to protected branches
+- **SHOULD** keep PR scope focused and size reasonable
+- **SHOULD** update documentation with code changes
