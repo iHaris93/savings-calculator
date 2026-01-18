@@ -8,12 +8,12 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 
 ## Standards
 
-**PRs**:  use descriptive titles (Conventional Commits format);  link issues; **SHOULD** request reviews
-**Issues**:  include clear reproduction steps, expected vs actual behavior, environment details
-**Reviews**:  provide constructive feedback;  use appropriate status (approve/request changes/comment)
-**Actions**:  provide fast feedback, fail fast, cache dependencies, use matrix testing
-**Releases**:  use [Semantic Versioning](../core/versioning.md);  include CHANGELOG.md following [Keep a Changelog](./changelog.md) format
-**Changelog**:  follow [Keep a Changelog](./changelog.md) format in CHANGELOG.md
+**PRs**: ! use descriptive titles (Conventional Commits format); ~ link issues; ~ request reviews
+**Issues**: ~ include clear reproduction steps, expected vs actual behavior, environment details
+**Reviews**: ~ provide constructive feedback; ! use appropriate status (approve/request changes/comment)
+**Actions**: ~ provide fast feedback, fail fast, cache dependencies, use matrix testing
+**Releases**: ~ use [Semantic Versioning](../core/versioning.md); ! include CHANGELOG.md following [Keep a Changelog](./changelog.md) format
+**Changelog**: ! follow [Keep a Changelog](./changelog.md) format in CHANGELOG.md
 
 ## gh CLI Commands
 

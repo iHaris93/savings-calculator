@@ -8,13 +8,13 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 
 ## Standards
 
-**Commits**:  use Conventional Commits format: `type(scope): description`
-**Changelog**:  follow [Keep a Changelog](./changelog.md) format
-**Versioning**:  follow [Semantic Versioning](../core/versioning.md) (SemVer)
-**Safety**:  use `git reset --hard` or force-push without explicit permission
-**Workflow**:  make small, reversible changes;  introduce silent breaking behavior
-**History**:  maintain linear history; **SHOULD** rebase over merge for feature branches (with permission)
-**Branches**:  use descriptive names: `feat/feature-name`, `fix/bug-name`, `refactor/scope`
+**Commits**: ! use Conventional Commits format: `type(scope): description`
+**Changelog**: ! follow [Keep a Changelog](./changelog.md) format
+**Versioning**: ~ follow [Semantic Versioning](../core/versioning.md)
+**Safety**: ⊗ use `git reset --hard` or force-push without explicit permission
+**Workflow**: ! make small, reversible changes; ⊗ introduce silent breaking behavior
+**History**: ~ maintain linear history; ~ rebase over merge for feature branches (with permission)
+**Branches**: ~ use descriptive names: `feat/feature-name`, `fix/bug-name`, `refactor/scope`
 
 ## Commit Types
 
@@ -31,10 +31,10 @@ chore(deps): upgrade golang.org/x/crypto to v0.17
 
 **Format**:
 
-- **type(scope)**:  include type; scope  be included
-- **description**:  be lowercase, no period, imperative mood ("add" not "added")
-- **body**:  be included;  wrap at 72 chars if present
-- **footer**:  include `BREAKING CHANGE:` or `Closes #123`
+- **type(scope)**: ! include type; ~ include scope
+- **description**: ! be lowercase, no period, imperative mood ("add" not "added")
+- **body**: ? be included; ~ wrap at 72 chars if present
+- **footer**: ? include `BREAKING CHANGE:` or `Closes #123`
 
 ## Commands
 

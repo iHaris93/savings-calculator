@@ -100,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Format
 
-! Each release section take the form:
+! Each release section takes the form:
 
 ```markdown
 ## [MAJOR.MINOR.PATCH] - YYYY-MM-DD
@@ -112,7 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Entry Format
 
-~ Each change be a concise bullet point:
+~ Each change is a concise bullet point:
 
 ```markdown
 ### Added
