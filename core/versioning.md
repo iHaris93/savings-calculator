@@ -52,7 +52,7 @@ Additional labels for pre-release and build metadata are available as extensions
 
 ### Version 0.y.z (Initial Development)
 
-- ? **MAY** use version `0.y.z` for initial development
+- ? use version `0.y.z` for initial development
 - ! Version `0.y.z` indicates unstable interface that **MAY** change at any time
 - ! Public interface **SHOULD NOT** be considered stable until version `1.0.0`
 
@@ -63,21 +63,21 @@ Additional labels for pre-release and build metadata are available as extensions
 
 ### PATCH Version (Z in X.Y.Z)
 
-- ! **MUST** increment when only backward compatible bug fixes are introduced
+- ! increment when only backward compatible bug fixes are introduced
 - ! Bug fix = internal change that fixes incorrect behavior
 
 ### MINOR Version (Y in X.Y.Z)
 
-- ! **MUST** increment when new backward compatible functionality is added to the public interface
-- ! **MUST** increment if any public interface functionality is marked as deprecated
-- ? **MAY** increment if substantial new functionality or improvements are introduced internally
-- ! **MUST** reset PATCH version to 0 when MINOR increments (e.g., `1.3.7` → `1.4.0`)
+- ! increment when new backward compatible functionality is added to the public interface
+- ! increment if any public interface functionality is marked as deprecated
+- ? increment if substantial new functionality or improvements are introduced internally
+- ! reset PATCH version to 0 when MINOR increments (e.g., `1.3.7` → `1.4.0`)
 
 ### MAJOR Version (X in X.Y.Z)
 
-- ! **MUST** increment when any backward incompatible changes are introduced to the public interface
-- ? **MAY** include MINOR and PATCH level changes
-- ! **MUST** reset MINOR and PATCH to 0 when MAJOR increments (e.g., `2.4.7` → `3.0.0`)
+- ! increment when any backward incompatible changes are introduced to the public interface
+- ? include MINOR and PATCH level changes
+- ! reset MINOR and PATCH to 0 when MAJOR increments (e.g., `2.4.7` → `3.0.0`)
 
 **Breaking changes include**:
 - Removed or renamed APIs, functions, CLI commands, or UI features
@@ -307,15 +307,15 @@ A: If they require migration or break existing queries/integrations, yes (MAJOR)
 
 ## Compliance
 
-- ! **MUST** use format `MAJOR.MINOR.PATCH` (e.g., `1.4.2`)
-- ! **MUST** increment MAJOR for breaking changes to public interface
-- ! **MUST** increment MINOR for new backward compatible features
-- ! **MUST** increment PATCH for backward compatible bug fixes
-- ~ **SHOULD** use pre-release versions for testing (`-alpha`, `-beta`, `-rc`)
+- ! use format `MAJOR.MINOR.PATCH` (e.g., `1.4.2`)
+- ! increment MAJOR for breaking changes to public interface
+- ! increment MINOR for new backward compatible features
+- ! increment PATCH for backward compatible bug fixes
+- ~ use pre-release versions for testing (`-alpha`, `-beta`, `-rc`)
 - ! **MUST NOT** modify released versions
-- ! **MUST** declare and document public interface (API, UI, CLI, config formats, data formats)
-- ~ **SHOULD** use `v` prefix for git tags (e.g., `v1.0.0`)
-- ~ **SHOULD** document breaking changes in CHANGELOG.md with migration guides
+- ! declare and document public interface (API, UI, CLI, config formats, data formats)
+- ~ use `v` prefix for git tags (e.g., `v1.0.0`)
+- ~ document breaking changes in CHANGELOG.md with migration guides
 
 ---
 

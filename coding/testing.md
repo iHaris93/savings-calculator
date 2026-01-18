@@ -12,19 +12,24 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 - ! Exclude entry points and main functions from coverage
 - ! Test all code paths: normal, edge cases, error conditions
 - ! Run `task check` (or equivalent) before commit
+- ⊗ say a (todo-list|plan|phase|project) is done if relevant tests have not been written, run, and PASSED.
+- ⊗ assume its ok for a test to fail in any situation
 
 ## Coverage
 
 **What to count:**
+
 - ! All source code in src/, internal/, pkg/, lib/
 
 **What to exclude:**
-- ! Entry points: main(), __main__, index.ts (if trivial)
+
+- ! Entry points: main(), **main**, index.ts (if trivial)
 - ! Generated code
 - ! Third-party code
 - ! Test files themselves
 
 **Thresholds:**
+
 - ! ≥85% lines
 - ! ≥85% functions/methods
 - ! ≥85% branches
@@ -33,33 +38,39 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 ## Test Types
 
 ### Unit Tests
+
 - ! Individual functions/methods/components
 - ! Normal cases + edge cases + error conditions
 - ! Fast execution (milliseconds)
 - ! No external dependencies (use mocks/stubs)
 
 ### Integration Tests
+
 - ~ Full workflows with real dependencies
 - ~ Realistic scenarios
 - ~ Database, API, file system interactions
 - ~ Slower execution acceptable
 
 ### Fuzzing Tests
+
 - ! ≥50 fuzzing tests per input point
 - ! Random/malformed inputs
 - ! Catch unexpected crashes, hangs, exceptions
 
 ### Load/Performance Tests
+
 - ~ For performance-critical code
 - ~ Measure response times under load
 - Tools: JMeter, Gatling, k6, Apache Bench
 
 ### Security Tests
+
 - ! For code handling untrusted input
 - ! SQL injection, XSS, auth bypass, path traversal
 - Tools: OWASP ZAP, Burp Suite, SQLMap
 
 ### Snapshot Tests
+
 - ~ For CLI output, rendered UI, generated files
 - ~ Detect unintended output changes
 
@@ -75,12 +86,14 @@ Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
 ## Test Organization
 
 **File naming:**
+
 - Python: `test_*.py` or `*_test.py`
 - Go: `*_test.go`
 - C++: `test_*.cpp` or `*_test.cpp`
 - TypeScript: `*.spec.ts` or `*.test.ts`
 
 **Directory structure:**
+
 ```
 project/
 ├── src/           # Source code
