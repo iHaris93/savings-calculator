@@ -32,15 +32,15 @@ Additional labels for pre-release and build metadata are available as extensions
 
 ### Version Numbers
 
-- ! Version numbers **MUST** take the form `X.Y.Z` where X, Y, and Z are non-negative integers
-- ! Version numbers **MUST NOT** contain leading zeroes (e.g., `1.01.0` is invalid)
-- ! Each element **MUST** increase numerically (e.g., `1.9.0` → `1.10.0` → `1.11.0`)
+- ! Version numbers  take the form `X.Y.Z` where X, Y, and Z are non-negative integers
+- ! Version numbers  contain leading zeroes (e.g., `1.01.0` is invalid)
+- ! Each element  increase numerically (e.g., `1.9.0` → `1.10.0` → `1.11.0`)
 
 ### Public Interface
 
-- ! Software using Semantic Versioning **MUST** declare a public interface
-- ~ Interface **SHOULD** be documented clearly (API docs, user guide, UI behavior, CLI commands)
-- ~ Interface **SHOULD** be precise and comprehensive
+- ! Software using Semantic Versioning  declare a public interface
+- ~ Interface  be documented clearly (API docs, user guide, UI behavior, CLI commands)
+- ~ Interface  be precise and comprehensive
 
 **Public interface includes**:
 - APIs (REST, GraphQL, library functions)
@@ -53,8 +53,8 @@ Additional labels for pre-release and build metadata are available as extensions
 ### Version 0.y.z (Initial Development)
 
 - ? use version `0.y.z` for initial development
-- ! Version `0.y.z` indicates unstable interface that **MAY** change at any time
-- ! Public interface **SHOULD NOT** be considered stable until version `1.0.0`
+- ! Version `0.y.z` indicates unstable interface that  change at any time
+- ! Public interface  be considered stable until version `1.0.0`
 
 ### Version 1.0.0 and Beyond
 
@@ -89,29 +89,29 @@ Additional labels for pre-release and build metadata are available as extensions
 
 ### Pre-release Versions
 
-- ! Pre-release version **MUST** be denoted by appending a hyphen and series of dot-separated identifiers (e.g., `1.0.0-alpha`, `1.0.0-alpha.1`)
-- ! Identifiers **MUST** comprise only ASCII alphanumerics and hyphens `[0-9A-Za-z-]`
-- ! Identifiers **MUST NOT** be empty
-- ! Numeric identifiers **MUST NOT** include leading zeroes
+- ! Pre-release version  be denoted by appending a hyphen and series of dot-separated identifiers (e.g., `1.0.0-alpha`, `1.0.0-alpha.1`)
+- ! Identifiers  comprise only ASCII alphanumerics and hyphens `[0-9A-Za-z-]`
+- ! Identifiers  be empty
+- ! Numeric identifiers  include leading zeroes
 - ! Pre-release versions have lower precedence than the normal version (e.g., `1.0.0-alpha < 1.0.0`)
 
 ### Build Metadata
 
-- ! Build metadata **MUST** be denoted by appending a plus sign and series of dot-separated identifiers (e.g., `1.0.0+20130313144700`)
-- ! Identifiers **MUST** comprise only ASCII alphanumerics and hyphens `[0-9A-Za-z-]`
-- ! Build metadata **SHOULD** be ignored when determining version precedence
+- ! Build metadata  be denoted by appending a plus sign and series of dot-separated identifiers (e.g., `1.0.0+20130313144700`)
+- ! Identifiers  comprise only ASCII alphanumerics and hyphens `[0-9A-Za-z-]`
+- ! Build metadata  be ignored when determining version precedence
 - ! Two versions that differ only in build metadata have the same precedence (e.g., `1.0.0+build1 == 1.0.0+build2`)
 
 ### Version Immutability
 
-- ! Once a versioned package has been released, the contents **MUST NOT** be modified
-- ! Any modifications **MUST** be released as a new version
+- ! Once a versioned package has been released, the contents  be modified
+- ! Any modifications  be released as a new version
 
 ## Precedence Rules
 
 Precedence determines how versions are compared:
 
-1. ! Precedence **MUST** be calculated by separating into MAJOR, MINOR, PATCH, and pre-release identifiers
+1. ! Precedence  be calculated by separating into MAJOR, MINOR, PATCH, and pre-release identifiers
 2. ! MAJOR, MINOR, and PATCH are compared numerically (e.g., `1.0.0 < 2.0.0 < 2.1.0 < 2.1.1`)
 3. ! Pre-release versions have **lower** precedence than normal versions (e.g., `1.0.0-alpha < 1.0.0`)
 4. ! Pre-release identifiers are compared from left to right:
@@ -238,7 +238,7 @@ New version: 2.1.0-alpha.1
 ### Git Tags
 
 ```bash
-# Tag a release (! MUST use v prefix)
+# Tag a release (! use v prefix)
 git tag -a v1.4.2 -m "Release v1.4.2"
 git push origin v1.4.2
 
@@ -312,7 +312,7 @@ A: If they require migration or break existing queries/integrations, yes (MAJOR)
 - ! increment MINOR for new backward compatible features
 - ! increment PATCH for backward compatible bug fixes
 - ~ use pre-release versions for testing (`-alpha`, `-beta`, `-rc`)
-- ! **MUST NOT** modify released versions
+- !  modify released versions
 - ! declare and document public interface (API, UI, CLI, config formats, data formats)
 - ~ use `v` prefix for git tags (e.g., `v1.0.0`)
 - ~ document breaking changes in CHANGELOG.md with migration guides
