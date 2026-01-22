@@ -168,6 +168,7 @@ cmd_project() {
     echo "  3. REST API"
     echo "  4. Web App"
     echo "  5. Library"
+    echo "  6. Other"
     read -p "Selection: " type_selection
     
     declare -A type_map
@@ -176,11 +177,16 @@ cmd_project() {
     type_map[3]="REST API"
     type_map[4]="Web App"
     type_map[5]="Library"
+    type_map[6]="Other"
     IFS=',' read -ra TYPES <<< "$type_selection"
     project_types=""
+    custom_type=""
     for ptype in "${TYPES[@]}"; do
         ptype=$(echo "$ptype" | tr -d ' ')
-        if [[ -n "${type_map[$ptype]:-}" ]]; then
+        if [[ "$ptype" == "6" ]]; then
+            read -p "Enter custom project type: " custom_type
+            project_types+="${custom_type}, "
+        elif [[ -n "${type_map[$ptype]:-}" ]]; then
             project_types+="${type_map[$ptype]}, "
         fi
     done
