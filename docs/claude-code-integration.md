@@ -1,6 +1,13 @@
-# Using Warping with Claude Code
+# Using Warping with AI Assistants (Claude Code & clawd.bot)
 
-This guide explains how to integrate the warping framework with Claude Code using the Skills system.
+This guide explains how to integrate the warping framework with AI assistants using the AgentSkills specification.
+
+## AgentSkills Specification
+
+Warping's SKILL.md follows the **AgentSkills specification**, making it compatible with:
+- **Claude Code** - AI-powered IDE assistant
+- **clawd.bot** - Personal AI assistant (WhatsApp, Telegram, Discord, etc.)
+- Any other AgentSkills-compatible system
 
 ## What is a Skill?
 
@@ -197,13 +204,137 @@ user-invocable: false
 
 <cite index="1-12">Keep SKILL.md under 500 lines. Move detailed reference material to separate files.</cite> The warping SKILL.md is optimized at ~327 lines with references to actual `./warping/*.md` files for details.
 
+## Using with clawd.bot
+
+clawd.bot is a personal AI assistant that works across WhatsApp, Telegram, Discord, and other messaging platforms. It uses the same AgentSkills specification as Claude Code, so the warping SKILL.md works seamlessly.
+
+### Installation for clawd.bot
+
+**Option 1: Manual Install (Shared)**
+```bash
+# Install for all agents on this machine
+mkdir -p ~/.clawdbot/skills/warping
+cp /path/to/warping-0.2.0/SKILL.md ~/.clawdbot/skills/warping/
+
+# Or symlink for auto-updates
+ln -sf /path/to/warping-0.2.0/SKILL.md ~/.clawdbot/skills/warping/SKILL.md
+```
+
+**Option 2: Per-Agent Install**
+```bash
+# Install for a specific agent workspace
+mkdir -p <workspace>/skills/warping
+cp SKILL.md <workspace>/skills/warping/
+```
+
+**Option 3: Via ClawdHub (Once Published)**
+```bash
+# Install from the registry
+clawdhub sync warping
+
+# Update to latest
+clawdhub sync warping --latest
+```
+
+### clawd.bot Requirements
+
+The SKILL.md includes clawd.bot-specific metadata:
+
+```yaml
+metadata:
+  clawdbot:
+    requires:
+      bins: ["task"]  # Requires taskfile binary
+    homepage: "https://github.com/visionik/warping"
+os: ["darwin", "linux"]  # macOS and Linux only
+```
+
+Make sure `task` is installed:
+```bash
+# macOS
+brew install go-task
+
+# Linux
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+```
+
+### Usage with clawd.bot
+
+Warping works the same way across messaging platforms:
+
+**Via WhatsApp**:
+```
+You: "Start a new Python project with warping"
+Clawd: *Auto-loads warping skill*
+       *Runs initialization workflow*
+       *Applies all standards*
+```
+
+**Via Telegram/Discord**:
+```
+You: "Fix this bug using warping standards"
+Clawd: *Loads warping*
+       *Writes failing test first*
+       *Fixes code*
+       *Runs task check*
+       *Creates commit*
+```
+
+### Multi-Agent Setups
+
+With clawd.bot, you can have multiple agents with different skill sets:
+
+- **Shared skills** (`~/.clawdbot/skills/`) - Available to all agents
+- **Per-agent skills** (`<workspace>/skills/`) - Specific to one agent
+
+For example:
+- Main coding agent: Has warping + development skills
+- Ops agent: Has warping + deployment skills  
+- Personal agent: No warping, just life tasks
+
+### Publishing to ClawdHub
+
+To share the warping skill with the clawd.bot community:
+
+```bash
+# From the skill directory
+cd /path/to/warping-0.2.0
+
+# Publish to ClawdHub
+clawdhub publish
+
+# Update version
+clawdhub publish --version 0.2.4
+```
+
+Browse published skills at https://clawdhub.com
+
 ## Further Reading
 
-- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+**Claude Code**:
+- [Skills Documentation](https://code.claude.com/docs/en/skills)
+- [Skills Marketplace](https://skillsmp.com/)
+
+**clawd.bot**:
+- [Skills Documentation](https://docs.clawd.bot/tools/skills)
+- [ClawdHub Registry](https://clawdhub.com)
+- [GitHub Repository](https://github.com/clawdbot/clawdbot)
+
+**Warping**:
 - [Warping Framework README](../README.md)
 - [Warping REFERENCES.md](../warping/REFERENCES.md)
-- [Skills Marketplace](https://skillsmp.com/)
+- [GitHub Repository](https://github.com/visionik/warping)
+
+## Cross-Platform Benefits
+
+Using the AgentSkills specification means:
+
+1. **Write once, use everywhere** - Same SKILL.md for Claude Code, clawd.bot, and future platforms
+2. **Consistent standards** - Your warping rules apply across IDE and messaging platforms
+3. **Single source of truth** - Update once, propagates everywhere
+4. **Community sharing** - Publish to multiple registries simultaneously
+5. **Universal workflows** - TDD, SDD, and quality standards work in any context
 
 ---
 
-**Note**: This skill is designed for Claude Code but the warping framework works with any AI assistant (Warp AI, Claude.ai, etc.) by referencing the `./warping/*.md` files directly.
+**Note**: The warping SKILL.md is designed for maximum compatibility with any AgentSkills-compatible system.

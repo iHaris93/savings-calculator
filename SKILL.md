@@ -2,6 +2,12 @@
 name: warping
 description: Apply warping framework standards for AI-assisted development. Use when starting projects, writing code, running tests, making commits, or when the user references warping, project standards, or coding guidelines.
 user-invocable: false
+metadata:
+  clawdbot:
+    requires:
+      bins: ["task"]
+    homepage: "https://github.com/visionik/warping"
+os: ["darwin", "linux"]
 ---
 
 # Warping Framework
@@ -361,20 +367,58 @@ git commit -m "fix: resolve issue with X"
 
 ## Integration Notes
 
+This SKILL.md follows the **AgentSkills specification**, making it compatible with multiple AI platforms.
+
 ### With Claude Code
 - This SKILL.md file teaches Claude Code about warping
-- Place in project root or `~/.claude/skills/warping/`
+- Place in `~/.claude/skills/warping/` (personal) or `.claude/skills/warping/` (project)
 - Claude automatically applies these rules when relevant
+- Works in VS Code via Claude Code extension
+
+### With clawd.bot
+- Compatible with clawd.bot's AgentSkills system
+- Place in `~/.clawdbot/skills/warping/` (shared) or `<workspace>/skills/warping/` (per-agent)
+- Install via ClawdHub: `clawdhub sync warping` (once published)
+- Works across WhatsApp, Telegram, Discord, and other channels
+- Requires `task` binary (specified in metadata)
+- Supports macOS and Linux (specified in `os` field)
 
 ### With Warp AI
 - Upload warping files to Warp Drive
 - Create Warp rules referencing warping/*.md files
 - Use `WARP.md` or `AGENTS.md` in project root
 
-### File Locations
-- **Personal skills**: `~/.claude/skills/warping/SKILL.md`
-- **Project skills**: `.claude/skills/warping/SKILL.md`
-- **Warping files**: `./warping/*.md`
+### Skill Locations
+
+**Claude Code**:
+- Personal: `~/.claude/skills/warping/SKILL.md`
+- Project: `.claude/skills/warping/SKILL.md`
+
+**clawd.bot**:
+- Shared (all agents): `~/.clawdbot/skills/warping/SKILL.md`
+- Per-agent: `<workspace>/skills/warping/SKILL.md`
+- Via registry: `clawdhub sync warping`
+
+**Warping files**: `./warping/*.md` (framework files)
+
+### Publishing to Registries
+
+**Claude Code Skills Marketplace**:
+- Browse: https://skillsmp.com
+- Submit via GitHub repository
+- Tag with `claude-skills`, `ai-coding`
+
+**ClawdHub** (clawd.bot):
+- Browse: https://clawdhub.com
+- Publish: `clawdhub publish`
+- Update: `clawdhub publish --version x.y.z`
+
+### Multi-Platform Benefits
+
+- **Same format** - Write once, use everywhere
+- **Consistent standards** - Warping rules apply across all AI assistants
+- **Universal workflows** - TDD, SDD, quality checks work in any context
+- **Shared knowledge** - Updates propagate to all platforms
 
 ## Quick Reference
 
