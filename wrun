@@ -1,0 +1,962 @@
+#!/usr/bin/env python3
+"""
+wrun - Cross-platform CLI tool for Warping framework v0.2.5
+A layered framework for AI-assisted development
+
+Works on: macOS, Linux, Windows, FreeBSD
+Requires: Python 3.6+
+Optional: prompt_toolkit (for better input experience)
+"""
+
+import sys
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from datetime import datetime
+from typing import List, Optional
+
+VERSION = "0.2.5"
+
+# Try to import prompt_toolkit for best input experience
+try:
+    from prompt_toolkit import prompt as pt_prompt
+    from prompt_toolkit.completion import WordCompleter
+    HAS_PROMPT_TOOLKIT = True
+except ImportError:
+    HAS_PROMPT_TOOLKIT = False
+    # Fall back to readline on Unix for arrow key support
+    try:
+        import readline  # Enable history and arrow keys on Unix
+    except ImportError:
+        pass  # Windows: basic input() still works
+
+# ANSI color codes (work on Unix and Windows 10+)
+class Colors:
+    RED = '\033[0;31m'
+    GREEN = '\033[0;32m'
+    YELLOW = '\033[1;33m'
+    BLUE = '\033[0;34m'
+    NC = '\033[0m'  # No Color
+    
+    @staticmethod
+    def strip_if_no_color():
+        """Disable colors if not supported"""
+        if os.name == 'nt' and sys.version_info < (3, 7):
+            # Older Windows without ANSI support
+            Colors.RED = Colors.GREEN = Colors.YELLOW = Colors.BLUE = Colors.NC = ''
+
+# Initialize colors
+Colors.strip_if_no_color()
+
+def info(msg: str):
+    """Print info message"""
+    print(f"{Colors.BLUE}ℹ{Colors.NC} {msg}")
+
+def success(msg: str):
+    """Print success message"""
+    print(f"{Colors.GREEN}✓{Colors.NC} {msg}")
+
+def warn(msg: str):
+    """Print warning message"""
+    print(f"{Colors.YELLOW}⚠{Colors.NC} {msg}")
+
+def error(msg: str):
+    """Print error message"""
+    print(f"{Colors.RED}✗{Colors.NC} {msg}")
+
+def get_script_dir() -> Path:
+    """Get the directory where this script is located"""
+    return Path(__file__).parent.absolute()
+
+def usage():
+    """Print usage information"""
+    hint = ""
+    if not HAS_PROMPT_TOOLKIT:
+        # Get the Python executable path for accurate install command
+        python_exe = sys.executable
+        stdlib_path = Path(sys.base_prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        is_externally_managed = (stdlib_path / "EXTERNALLY-MANAGED").exists()
+        
+        install_cmd = f"{python_exe} -m pip install"
+        if is_externally_managed:
+            install_cmd += " --break-system-packages"
+        install_cmd += " prompt_toolkit"
+        
+        hint = f"\n💡 Tip: Install prompt_toolkit for better input (arrow keys, history, completion):\n   {install_cmd}\n"
+    
+    print(f"""Warping CLI v{VERSION}{hint}
+
+Usage: wrun <command> [options]
+       python wrun <command> [options]       # If not executable
+       python3 wrun <command> [options]      # If not executable
+
+Commands:
+  bootstrap       Set up your user preferences (user.md)
+  project         Create/update project configuration (project.md)
+  spec            Generate project specification (interactive interview)
+  install         Install warping framework in a project directory
+  reset           Reset configuration files to default state
+  validate        Validate warping configuration files
+  update          Update warping framework to latest version
+  doctor          Check system dependencies and configuration
+  help            Show this help message
+
+Examples:
+  wrun bootstrap              # First-time setup
+  wrun project                # Configure current project
+  wrun spec                   # Generate SPECIFICATION.md
+  wrun install ~/my-project   # Install warping in a project
+  wrun reset                  # Reset config files (interactive)
+  wrun reset --all            # Reset all config files (no prompts)
+  wrun validate               # Check configuration is valid
+
+For more information: https://github.com/visionik/warping
+""")
+
+def read_input(prompt_text: str, default: str = "", choices: List[str] = None) -> str:
+    """Read user input with optional default and completion
+    
+    Args:
+        prompt_text: The prompt to display
+        default: Default value if user presses Enter
+        choices: Optional list of choices for auto-completion (prompt_toolkit only)
+    
+    Returns:
+        User input or default value
+    """
+    try:
+        if HAS_PROMPT_TOOLKIT:
+            # Use prompt_toolkit for best experience
+            completer = WordCompleter(choices, ignore_case=True) if choices else None
+            value = pt_prompt(prompt_text, default=default, completer=completer)
+            return value if value else default
+        else:
+            # Fall back to basic input() with readline support (if available on Unix)
+            value = input(prompt_text)
+            return value if value else default
+    except (EOFError, KeyboardInterrupt):
+        return default
+
+def read_yn(prompt_text: str) -> bool:
+    """Read yes/no input
+    
+    Args:
+        prompt_text: The prompt to display
+    
+    Returns:
+        True if user confirms, False otherwise
+    """
+    try:
+        if HAS_PROMPT_TOOLKIT:
+            response = pt_prompt(f"{prompt_text} (y/N) ", 
+                                completer=WordCompleter(['y', 'yes', 'n', 'no'], 
+                                                       ignore_case=True))
+        else:
+            response = input(f"{prompt_text} (y/N) ")
+        return response.strip().lower() in ('y', 'yes')
+    except (EOFError, KeyboardInterrupt):
+        return False
+
+def cmd_bootstrap(args: List[str]):
+    """Bootstrap command - set up user.md"""
+    info("Warping Bootstrap - User Preferences Setup")
+    print()
+    
+    script_dir = get_script_dir()
+    user_file = script_dir / "core" / "user.md"
+    
+    # Check if file exists
+    if user_file.exists() and "--force" not in args:
+        warn("user.md already exists. Use --force to overwrite.")
+        if not read_yn("Overwrite existing user.md?"):
+            return 0
+    
+    # Gather user information
+    user_name = read_input("Your name (how AI should address you): ")
+    coverage = read_input("Default coverage threshold (default: 85%): ", "85")
+    
+    print()
+    info("Select your primary programming languages (comma-separated):")
+    print("  1. Python")
+    print("  2. Go")
+    print("  3. TypeScript")
+    print("  4. C++")
+    print("  5. Other")
+    lang_selection = read_input("Selection (e.g., 1,3): ")
+    
+    # Map selections to language names
+    lang_map = {
+        "1": "Python",
+        "2": "Go",
+        "3": "TypeScript",
+        "4": "C++",
+        "5": "Other"
+    }
+    
+    lang_nums = [s.strip() for s in lang_selection.split(',')]
+    languages = []
+    for num in lang_nums:
+        if num in lang_map:
+            languages.append(f"- {lang_map[num]}")
+    
+    languages_str = '\n'.join(languages) if languages else "- (None specified)"
+    
+    print()
+    custom_rules = read_input("Any custom rules or preferences (optional, press Enter to skip): ")
+    
+    # Generate user.md
+    user_content = f"""# User Preferences
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**Rule Precedence**: This file has HIGHEST precedence - overrides all other warping rules.
+
+## Name
+
+Address the user as: **{user_name}**
+
+## Default Standards
+
+**Coverage**: ! ≥{coverage}% test coverage for all projects (unless project.md specifies otherwise)
+
+**Primary Languages**:
+{languages_str}
+
+## Custom Rules
+
+{custom_rules if custom_rules else "No custom rules defined yet."}
+
+## Workflow Preferences
+
+- ~ Use task-based automation (Taskfile)
+- ! Always run `task check` before committing
+- ~ Follow Conventional Commits
+
+## AI Behavior
+
+- ~ Be direct and concise
+- ~ Proactively suggest improvements
+- ! Explain tradeoffs for major decisions
+
+---
+
+**Note**: You can edit this file anytime to update your preferences.
+**See**: [../main.md](../main.md) for framework overview.
+"""
+    
+    user_file.parent.mkdir(parents=True, exist_ok=True)
+    user_file.write_text(user_content, encoding='utf-8')
+    
+    success(f"Created user.md at {user_file}")
+    print()
+    info("user.md defines your personal preferences and default standards.")
+    print()
+    
+    # Check if we're in a warping project directory
+    if Path("./warping").is_dir():
+        info("Next: Configure project-specific settings.")
+        if read_yn("Would you like to run 'wrun project' now?"):
+            print()
+            return cmd_project([])
+        else:
+            print()
+            info("You can run 'wrun project' later to configure your project.")
+            return 0
+    else:
+        print()
+        info("To configure a specific project, run 'wrun project' in your project directory.")
+        return 0
+
+def cmd_project(args: List[str]):
+    """Project command - configure project.md"""
+    print()
+    info("=== Warping Project Configuration ===")
+    print()
+    info("This command creates project.md, which defines YOUR project's specifics:")
+    info("  • Tech stack and programming language")
+    info("  • Project type (CLI, API, Web App, Library, etc.)")
+    info("  • Quality standards (test coverage thresholds)")
+    info("  • Workflow commands (task check, task test, etc.)")
+    print()
+    info("This file tells AI assistants how to build and maintain YOUR project.")
+    info("It works alongside the general Warping guidelines in ./warping/")
+    print()
+    
+    project_file = Path("./warping/core/project.md")
+    
+    # Check if we're in a project directory
+    if not Path("./warping").is_dir():
+        warn("No ./warping directory found. Run 'wrun install' first or specify a project directory.")
+        if read_yn("Install warping in current directory?"):
+            cmd_install(["."])
+        else:
+            return 1
+    
+    # Gather project information
+    project_name = read_input("Project name: ")
+    
+    print()
+    info("Select project type (comma-separated if multiple):")
+    print("  1. CLI (Command-line interface)")
+    print("  2. TUI (Terminal UI)")
+    print("  3. REST API")
+    print("  4. Web App")
+    print("  5. Library")
+    print("  6. Other")
+    type_selection = read_input("Selection: ")
+    
+    type_map = {
+        "1": "CLI",
+        "2": "TUI",
+        "3": "REST API",
+        "4": "Web App",
+        "5": "Library",
+        "6": "Other"
+    }
+    
+    type_nums = [s.strip() for s in type_selection.split(',')]
+    project_types = []
+    custom_type = ""
+    
+    for num in type_nums:
+        if num == "6":
+            custom_type = read_input("Enter custom project type: ")
+            project_types.append(custom_type)
+        elif num in type_map:
+            project_types.append(type_map[num])
+    
+    project_types_str = ", ".join(project_types)
+    
+    print()
+    info("Select primary programming language:")
+    print("  1. Python")
+    print("  2. Go")
+    print("  3. TypeScript")
+    print("  4. C++")
+    lang_num = read_input("Selection: ")
+    
+    plang_map = {
+        "1": "Python",
+        "2": "Go",
+        "3": "TypeScript",
+        "4": "C++"
+    }
+    primary_lang = plang_map.get(lang_num, "Python")
+    
+    print()
+    proj_coverage = read_input("Coverage threshold (default: 85%): ", "85")
+    tech_stack = read_input("Tech stack details (e.g., 'Flask + SQLAlchemy' or 'React + Next.js'): ")
+    
+    # Generate project.md
+    tech_stack_str = f" - {tech_stack}" if tech_stack else ""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    project_content = f"""# {project_name} Project Guidelines
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**⚠️ See also**: [../main.md](../main.md) | [../languages/{primary_lang.lower()}.md](../languages/{primary_lang.lower()}.md)
+
+## Project Configuration
+
+**Tech Stack**: {project_types_str} using {primary_lang}{tech_stack_str}
+
+## Workflow
+
+```bash
+task check         # Pre-commit (fmt, lint, test, test:coverage)
+task test:coverage # Coverage (≥{proj_coverage}%)
+task build         # Build project
+task clean         # Clean artifacts
+```
+
+## Secrets
+
+```bash
+ls secrets/
+# Add your secrets to secrets/ directory
+# Use .example files as templates
+```
+
+## Standards
+
+**Quality:**
+- ! Run `task check` before every commit
+- ! Achieve ≥{proj_coverage}% coverage overall + per-module
+- ! Store secrets in `secrets/` dir
+- ~ Provide `.example` templates for secrets
+
+**Telemetry:**
+- ~ Structured logging (see [../tools/telemetry.md](../tools/telemetry.md))
+- ~ Sentry.io for error tracking
+- ? Distributed tracing for complex workflows
+
+## Project-Specific Rules
+
+(Add your custom rules here)
+
+---
+
+**Generated by**: wrun v{VERSION}
+**Date**: {today}
+"""
+    
+    project_file.parent.mkdir(parents=True, exist_ok=True)
+    project_file.write_text(project_content, encoding='utf-8')
+    
+    success(f"Created project.md at {project_file}")
+    print()
+    info("project.md defines your project's tech stack, workflow, and quality standards.")
+    print()
+    
+    # Prompt to run spec generation
+    info("Next: Generate a detailed specification via AI interview.")
+    info("The 'spec' command creates PRD.md with your project requirements,")
+    info("which an AI assistant will use to interview you and generate SPECIFICATION.md.")
+    print()
+    if read_yn("Would you like to run 'wrun spec' now?"):
+        print()
+        return cmd_spec([])
+    else:
+        print()
+        info("You can run 'wrun spec' later to generate your specification.")
+        return 0
+
+def cmd_spec(args: List[str]):
+    """Spec command - generate specification via interview"""
+    print()
+    info("=== Warping Specification Generator ===")
+    print()
+    info("This command creates PRD.md (Product Requirements Document) with:")
+    info("  • Your project's core features and requirements")
+    info("  • An AI interview template to drill into details")
+    print()
+    info("After creating PRD.md, you'll:")
+    info("  1. Give PRD.md to your AI assistant")
+    info("  2. The AI conducts an in-depth interview about requirements")
+    info("  3. The AI generates SPECIFICATION.md with full implementation plan")
+    info("  4. The AI can then implement the spec")
+    print()
+    info("This ensures nothing important is overlooked before coding starts.")
+    print()
+    
+    prd_file = Path("./PRD.md")
+    
+    if prd_file.exists() and "--force" not in args:
+        warn("PRD.md already exists. Use --force to overwrite.")
+        return 1
+    
+    # Try to read project name from project.md
+    project_file = Path("./warping/core/project.md")
+    spec_name = ""
+    if project_file.exists():
+        try:
+            content = project_file.read_text(encoding='utf-8')
+            # Extract project name from first heading (e.g., "# MyProject Project Guidelines")
+            for line in content.split('\n'):
+                if line.startswith('# ') and 'Project Guidelines' in line:
+                    spec_name = line.replace('# ', '').replace(' Project Guidelines', '').strip()
+                    break
+        except:
+            pass
+    
+    if spec_name:
+        info(f"Project name from project.md: {spec_name}")
+        if not read_yn("Use this name?"):
+            spec_name = read_input("Project name: ")
+    else:
+        spec_name = read_input("Project name: ")
+    
+    spec_desc = read_input("Brief description (1-2 sentences): ")
+    
+    print()
+    info("Enter project features (one per line, empty line to finish):")
+    features = []
+    while True:
+        feature = read_input("  Feature: ")
+        if not feature:
+            break
+        features.append(feature)
+    
+    # Build feature list
+    feature_list = '\n'.join([f"{i+1}. {f}" for i, f in enumerate(features)])
+    
+    # Read the make-spec template
+    script_dir = get_script_dir()
+    template_file = script_dir / "templates" / "make-spec.md"
+    
+    if not template_file.exists():
+        error(f"Template file not found: {template_file}")
+        return 1
+    
+    template_content = template_file.read_text(encoding='utf-8')
+    
+    # Replace placeholders
+    template_content = template_content.replace("[project name]", spec_name)
+    template_content = template_content.replace(f"I want to build [project name]", f"I want to build {spec_name}")
+    
+    # Generate PRD
+    today = datetime.now().strftime("%Y-%m-%d")
+    full_path = Path.cwd() / prd_file
+    
+    prd_content = f"""# Product Requirements Document: {spec_name}
+
+**Generated**: {today}
+**Status**: Ready for AI Interview
+
+## Initial Input
+
+**Project Description**: {spec_desc}
+
+**I want to build {spec_name} that has the following features:**
+{feature_list}
+---
+
+{template_content}
+"""
+    
+    prd_file.write_text(prd_content, encoding='utf-8')
+    
+    success(f"Created PRD.md at {prd_file}")
+    info("Next steps:")
+    info(f"  1. Open your AI assistant (Claude, Warp.dev, etc.)")
+    info(f"  2. Ask your AI to read and run {full_path}")
+    info(f"  3. The AI will conduct a detailed interview based on the template")
+    info(f"  4. AI will generate the final SPECIFICATION.md")
+    info(f"  5. You can review the SPECIFICATION.md if you want")
+    info(f"  6. Ask your AI to implement {Path.cwd()}/SPECIFICATION.md")
+    info(f"  7. Your AI may ask you some questions like 'should I continue', just say yes or please continue")
+    return 0
+
+def cmd_install(args: List[str]):
+    """Install command - install warping framework in a project"""
+    target_dir = Path(args[0]) if args else Path(".")
+    
+    print()
+    info("=== Warping Installation ===")
+    print()
+    info("This command installs the Warping framework in your project directory.")
+    info("It will create:")
+    info("  • ./warping/        - Framework files (guidelines, templates, references)")
+    info("  • ./secrets/        - Directory for API keys and credentials (.gitignored)")
+    info("  • ./docs/           - Project documentation")
+    info("  • Taskfile.yml      - Task automation config (if not present)")
+    info("  • .gitignore        - Ensures secrets aren't committed (if not present)")
+    print()
+    info(f"Target directory: {target_dir.absolute()}")
+    print()
+    
+    if not target_dir.exists():
+        error(f"Directory does not exist: {target_dir}")
+        return 1
+    
+    # Change to target directory
+    original_dir = Path.cwd()
+    os.chdir(target_dir)
+    
+    try:
+        warping_dir = Path("./warping")
+        
+        # Check if warping already exists
+        already_installed = warping_dir.exists()
+        if already_installed:
+            warn("Warping already installed in this directory.")
+            if not read_yn("Reinstall?"):
+                # Still offer to run project even if not reinstalling
+                print()
+                info("Next: Configure this project with project-specific settings.")
+                if read_yn("Would you like to run 'wrun project' now?"):
+                    print()
+                    return cmd_project([])
+                else:
+                    return 0
+        
+        # Copy warping framework
+        info("Copying warping framework...")
+        script_dir = get_script_dir()
+        
+        if warping_dir.exists():
+            shutil.rmtree(warping_dir)
+        
+        shutil.copytree(script_dir, warping_dir)
+        
+        # Create project-specific files
+        Path("secrets").mkdir(exist_ok=True)
+        Path("docs").mkdir(exist_ok=True)
+        Path("secrets/.gitkeep").touch()
+        
+        # Create .gitignore for secrets
+        gitignore = Path(".gitignore")
+        if not gitignore.exists():
+            gitignore.write_text("secrets/*\n!secrets/.gitkeep\n!secrets/*.example\n", encoding='utf-8')
+        
+        # Create basic Taskfile if it doesn't exist
+        taskfile = Path("Taskfile.yml")
+        if not taskfile.exists():
+            taskfile_content = """version: '3'
+
+tasks:
+  default:
+    desc: List all tasks
+    cmds:
+      - task --list
+    silent: true
+
+  check:
+    desc: Run all pre-commit checks
+    cmds:
+      - echo "Add your check commands here"
+      - task fmt
+      - task lint
+      - task test
+
+  fmt:
+    desc: Format code
+    cmds:
+      - echo "Add your format command here"
+
+  lint:
+    desc: Lint code
+    cmds:
+      - echo "Add your lint command here"
+
+  test:
+    desc: Run tests
+    cmds:
+      - echo "Add your test command here"
+
+  test:coverage:
+    desc: Run tests with coverage
+    cmds:
+      - echo "Add your coverage command here"
+"""
+            taskfile.write_text(taskfile_content, encoding='utf-8')
+            success("Created Taskfile.yml")
+        
+        success("Warping installed successfully!")
+        print()
+        
+        # Prompt to run project configuration
+        info("Next: Configure this project with project-specific settings.")
+        if read_yn("Would you like to run 'wrun project' now?"):
+            print()
+            return cmd_project([])
+        else:
+            print()
+            info("You can run these commands later:")
+            info("  ./warping/wrun project     # Configure this project")
+            info("  ./warping/wrun bootstrap   # Set up user preferences")
+            return 0
+    
+    finally:
+        os.chdir(original_dir)
+
+def cmd_validate(args: List[str]):
+    """Validate command - check warping configuration"""
+    info("Validating Warping configuration...")
+    print()
+    
+    script_dir = get_script_dir()
+    errors = 0
+    
+    # Check for required files
+    required_files = [
+        "main.md",
+        "core/user.md",
+        "coding/coding.md",
+        "REFERENCES.md"
+    ]
+    
+    for file in required_files:
+        filepath = script_dir / file
+        if filepath.exists():
+            success(f"Found: {file}")
+        else:
+            error(f"Missing: {file}")
+            errors += 1
+    
+    # Check for at least one language file
+    lang_dir = script_dir / "languages"
+    if lang_dir.exists() and list(lang_dir.glob("*.md")):
+        success("Language files present")
+    else:
+        error("No language files found in languages/")
+        errors += 1
+    
+    # Check for broken links (simple check)
+    info("Checking for common broken links...")
+    # Note: Python implementation could be more sophisticated
+    
+    print()
+    if errors == 0:
+        success("Validation passed! Warping configuration is valid.")
+        return 0
+    else:
+        error(f"Validation failed with {errors} error(s).")
+        return 1
+
+def cmd_doctor(args: List[str]):
+    """Doctor command - check system dependencies"""
+    info("Warping Doctor - Checking system...")
+    print()
+    
+    warnings = 0
+    
+    # Check for required tools
+    def check_command(cmd: str, name: str, required: bool = False):
+        nonlocal warnings
+        if shutil.which(cmd):
+            success(f"{name} is installed")
+        else:
+            if required:
+                error(f"{name} not found - required")
+            else:
+                warn(f"{name} not found - install from https://taskfile.dev" if cmd == "task" 
+                     else f"{name} not found")
+                warnings += 1
+    
+    check_command("task", "task (Taskfile)")
+    check_command("git", "git", required=True)
+    check_command("python3", "python3")
+    check_command("go", "go")
+    check_command("node", "node")
+    
+    # Check directory structure
+    print()
+    info("Checking Warping structure...")
+    
+    script_dir = get_script_dir()
+    expected_dirs = ["core", "languages", "interfaces", "tools", "swarm", "templates", "meta"]
+    
+    for dir_name in expected_dirs:
+        dir_path = script_dir / dir_name
+        if dir_path.is_dir():
+            success(f"Directory: {dir_name}/")
+        else:
+            warn(f"Missing directory: {dir_name}/")
+            warnings += 1
+    
+    print()
+    if warnings == 0:
+        success("System check passed!")
+    else:
+        warn(f"System check completed with {warnings} warning(s).")
+    
+    return 0
+
+def cmd_update(args: List[str]):
+    """Update command - update warping framework"""
+    info("Warping update functionality not yet implemented")
+    warn("Manual update: Replace warping directory with latest version from repository")
+    return 0
+
+def cmd_reset(args: List[str]):
+    """Reset command - reset configuration files to default/empty state"""
+    print()
+    info("=== Warping Reset ===")
+    print()
+    info("This command resets warping configuration files to their default state.")
+    info("You can choose which files to reset:")
+    print()
+    info("  • user.md          - Your personal preferences (in ./warping/core/)")
+    info("  • project.md        - Project configuration (in ./warping/core/)")
+    info("  • PRD.md            - Product requirements document (in current directory)")
+    info("  • SPECIFICATION.md  - Generated specification (in current directory)")
+    print()
+    
+    # Check what exists
+    script_dir = get_script_dir()
+    user_file = script_dir / "core" / "user.md"
+    project_file = Path("./warping/core/project.md")
+    prd_file = Path("./PRD.md")
+    spec_file = Path("./SPECIFICATION.md")
+    
+    files_to_reset = []
+    
+    # Check each file and ask if user wants to reset it
+    if "--all" in args:
+        # Reset all without asking
+        if user_file.exists():
+            files_to_reset.append(("user.md", user_file, True))
+        if project_file.exists():
+            files_to_reset.append(("project.md", project_file, False))
+        if prd_file.exists():
+            files_to_reset.append(("PRD.md", prd_file, False))
+        if spec_file.exists():
+            files_to_reset.append(("SPECIFICATION.md", spec_file, False))
+    else:
+        # Ask for each file
+        if user_file.exists():
+            if read_yn("Reset user.md to default template?"):
+                files_to_reset.append(("user.md", user_file, True))
+        
+        if project_file.exists():
+            if read_yn("Delete project.md?"):
+                files_to_reset.append(("project.md", project_file, False))
+        
+        if prd_file.exists():
+            if read_yn("Delete PRD.md?"):
+                files_to_reset.append(("PRD.md", prd_file, False))
+        
+        if spec_file.exists():
+            if read_yn("Delete SPECIFICATION.md?"):
+                files_to_reset.append(("SPECIFICATION.md", spec_file, False))
+    
+    if not files_to_reset:
+        print()
+        info("No files to reset.")
+        return 0
+    
+    # Confirm
+    print()
+    warn("The following files will be reset/deleted:")
+    for name, _, _ in files_to_reset:
+        warn(f"  • {name}")
+    print()
+    
+    if "--all" not in args and not read_yn("Are you sure you want to continue?"):
+        info("Reset cancelled.")
+        return 0
+    
+    # Perform reset
+    print()
+    for name, filepath, reset_to_default in files_to_reset:
+        if reset_to_default:
+            # Reset user.md to default template
+            default_content = """# User Preferences
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**Rule Precedence**: This file has HIGHEST precedence - overrides all other warping rules.
+
+## Name
+
+Address the user as: **(Your Name)**
+
+## Default Standards
+
+**Coverage**: ! ≥85% test coverage for all projects (unless project.md specifies otherwise)
+
+**Primary Languages**:
+- (Add your languages here)
+
+## Custom Rules
+
+No custom rules defined yet.
+
+## Workflow Preferences
+
+- ~ Use task-based automation (Taskfile)
+- ! Always run `task check` before committing
+- ~ Follow Conventional Commits
+
+## AI Behavior
+
+- ~ Be direct and concise
+- ~ Proactively suggest improvements
+- ! Explain tradeoffs for major decisions
+
+---
+
+**Note**: You can edit this file anytime to update your preferences.
+**See**: [../main.md](../main.md) for framework overview.
+"""
+            filepath.write_text(default_content, encoding='utf-8')
+            success(f"Reset {name} to default template")
+        else:
+            # Delete file
+            filepath.unlink()
+            success(f"Deleted {name}")
+    
+    print()
+    success("Reset complete!")
+    info("Run 'wrun bootstrap' or 'wrun project' to reconfigure.")
+    return 0
+
+def check_prompt_toolkit():
+    """Check if prompt_toolkit is available and offer to help install it"""
+    if not HAS_PROMPT_TOOLKIT:
+        print()
+        info("wrun works better with prompt_toolkit (arrow keys, history, tab completion)")
+        try:
+            response = input("Would you like installation instructions? (y/N) ").strip().lower()
+            if response in ('y', 'yes'):
+                print()
+                success("To install prompt_toolkit:")
+                print()
+                # Get the Python executable path
+                python_exe = sys.executable
+                
+                # Try to determine if this is an externally-managed environment
+                # by checking for the EXTERNALLY-MANAGED file (PEP 668)
+                stdlib_path = Path(sys.base_prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}"
+                is_externally_managed = (stdlib_path / "EXTERNALLY-MANAGED").exists()
+                
+                if is_externally_managed:
+                    print(f"  {python_exe} -m pip install --break-system-packages prompt_toolkit")
+                    print()
+                    warn("Your Python is externally-managed (PEP 668) by your package manager.")
+                    info("The --break-system-packages flag allows installing Python packages directly.")
+                    info("Alternative: Use a virtual environment or pipx for isolated installations.")
+                    info("More info: https://peps.python.org/pep-0668/")
+                else:
+                    print(f"  {python_exe} -m pip install prompt_toolkit")
+                print()
+                info("After installing, re-run your command:")
+                print(f"  {' '.join(sys.argv)}")
+                print()
+                return True  # Exit after showing instructions
+        except (EOFError, KeyboardInterrupt):
+            print()
+    return False  # Continue normally
+
+def main():
+    """Main command dispatcher"""
+    if len(sys.argv) < 2:
+        usage()
+        return 0
+    
+    # Check for prompt_toolkit and offer help (only for interactive commands)
+    command = sys.argv[1]
+    interactive_commands = ['bootstrap', 'project', 'spec', 'install']
+    if command in interactive_commands and check_prompt_toolkit():
+        return 0  # Exit after showing install instructions
+    
+    args = sys.argv[2:]
+    
+    commands = {
+        'bootstrap': cmd_bootstrap,
+        'project': cmd_project,
+        'spec': cmd_spec,
+        'install': cmd_install,
+        'reset': cmd_reset,
+        'validate': cmd_validate,
+        'doctor': cmd_doctor,
+        'update': cmd_update,
+        'help': lambda _: usage(),
+        '--help': lambda _: usage(),
+        '-h': lambda _: usage(),
+        'version': lambda _: print(f"Warping CLI v{VERSION}"),
+        '--version': lambda _: print(f"Warping CLI v{VERSION}"),
+        '-v': lambda _: print(f"Warping CLI v{VERSION}"),
+    }
+    
+    if command in commands:
+        try:
+            return commands[command](args)
+        except KeyboardInterrupt:
+            print()
+            warn("Operation cancelled by user")
+            return 130
+        except Exception as e:
+            error(f"Error: {e}")
+            return 1
+    else:
+        error(f"Unknown command: {command}")
+        print()
+        usage()
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main() or 0)
