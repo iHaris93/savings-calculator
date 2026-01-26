@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hardware Savings Calculator – Live comparison | Sighthound</title>
+    <!-- Fonts: Poppins for headings and body text -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="assets/print.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Configure Tailwind CDN to use class-based dark mode
+      tailwind.config = {
+        darkMode: "class",
+      };
+    </script>
+    <style>
+      :root {
+        --font-body: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        --font-heading: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      body {
+        font-family: var(--font-body);
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-family: var(--font-heading);
+      }
+
+      /* Screen helpers only; print-specific rules live in assets/print.css */
+      .no-print {
+      }
+
+      .print-only {
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-white text-slate-900 antialiased" data-mode="live">
+    <div class="min-h-screen flex flex-col">
+      <main class="flex-1">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div class="no-print flex justify-end mb-4">
+            <nav class="inline-flex items-center gap-1 text-xs sm:text-sm rounded-full bg-slate-100/80 p-0.5 shadow-sm">
+              <button
+                type="button"
+                data-mode-target="guided"
+                class="px-3 py-1.5 rounded-full border border-transparent text-slate-700 transition-colors"
+              >
+                Guided estimate
+              </button>
+              <button
+                type="button"
+                data-mode-target="live"
+                class="px-3 py-1.5 rounded-full border border-transparent text-slate-700 transition-colors"
+              >
+                Live comparison
+              </button>
+            </nav>
+          </div>
+          <div class="mb-6 text-xs sm:text-sm text-slate-600 dark:text-slate-300 no-print">
+            <p>
+              Adjust the assumptions below to see how centralizing AI on a Compute Node compares to buying smart cameras for every location. Results update instantly as you change the inputs.
+            </p>
+          </div>
+          <div id="layoutGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+            <!-- Inputs column -->
+            <section class="bg-slate-50 rounded-xl shadow-md border border-slate-200/80 p-5 sm:p-6 space-y-5">
+              <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50">
+                Your setup
+              </h2>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Answer a few questions about your deployment. Results update as you go.
+              </p>
+
+              <!-- SECTION 1: CAMERAS -->
+              <div id="sectionCameras" class="space-y-4">
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-2 dark:text-slate-400">
+                  <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">1</span>
+                  <span>Cameras</span>
+                </h3>
+                <!-- Total cameras -->
+                <div class="space-y-1.5">
+                  <label
+                    for="totalCameras"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Total number of cameras
+                    <span
+                      class="ml-2 inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                    >
+                      Required
+                    </span>
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="totalCamerasHelper"
+                      aria-label="Help: total number of cameras"
+                    >
+                      ⓘ
+                    </button>
+                  </label>
+                  <input
+                    id="totalCameras"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="10000"
+                    step="1"
+                    placeholder="Total cameras"
+                    class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                  <p
+                    id="totalCamerasHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    The total number of camera streams you want to analyze. Each camera counts as one stream.
+                  </p>
+                </div>
+
+                <!-- Existing standard IP cameras -->
+                <div class="space-y-1.5">
+                  <p class="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Do you already have standard IP cameras installed?
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="standardIpHelper"
+                      aria-label="Help: standard IP cameras"
+                    >
+                      ⓘ
+                    </button>
+                  </p>
+                  <div class="flex flex-wrap gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label class="inline-flex items-center gap-2">
+                      <input
+                        id="existingCamerasToggle"
+                        type="radio"
+                        name="existingCamerasGroup"
+                        value="yes"
+                        class="h-3.5 w-3.5 border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <span class="select-none">Yes, we already have standard IP cameras installed.</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                      <input
+                        id="existingCamerasToggleNo"
+                        type="radio"
+                        name="existingCamerasGroup"
+                        value="no"
+                        class="h-3.5 w-3.5 border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <span class="select-none">No, we will add standard IP cameras as part of this deployment.</span>
+                    </label>
+                  </div>
+                  <p
+                    id="standardIpHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    Standard IP cameras capture video only. They do not run analytics like license plate recognition inside the camera.
+                  </p>
+                </div>
+
+                <!-- Smart / edge cameras -->
+                <div class="space-y-1.5">
+                  <p class="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Do you currently use smart / edge cameras with built-in analytics?
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="smartCamerasHelper"
+                      aria-label="Help: smart / edge cameras"
+                    >
+                      ⓘ
+                    </button>
+                  </p>
+                  <div class="flex flex-wrap gap-3 text-xs text-slate-600 dark:text-slate-300">
+                    <label class="inline-flex items-center gap-2">
+                      <input
+                        id="smartCamerasToggle"
+                        type="radio"
+                        name="smartCamerasGroup"
+                        value="yes"
+                        class="h-3.5 w-3.5 border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <span class="select-none">Yes, we currently use smart / edge cameras with built-in analytics.</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                      <input
+                        id="smartCamerasToggleNo"
+                        type="radio"
+                        name="smartCamerasGroup"
+                        value="no"
+                        class="h-3.5 w-3.5 border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <span class="select-none">No, we do not currently use smart / edge cameras.</span>
+                    </label>
+                  </div>
+                  <p
+                    id="smartCamerasHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    Smart or edge cameras process analytics inside the camera itself and typically cost more because each unit includes compute and software.
+                  </p>
+                  <p
+                    id="cameraTypeExclusivityNote"
+                    class="text-xs text-amber-700 dark:text-amber-400 hidden"
+                  >
+                    A camera cannot be both standard and smart at the same time.
+                  </p>
+                </div>
+              </div>
+
+              <!-- SECTION 2: CURRENT APPROACH (SMART CAMERAS) -->
+              <div
+                id="sectionCurrentApproach"
+                class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700"
+              >
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-2 dark:text-slate-400">
+                  <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">2</span>
+                  <span>Current approach (smart cameras)</span>
+                </h3>
+                <!-- Smart camera cost -->
+                <div class="space-y-1.5">
+                  <label
+                    for="smartCameraCost"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Estimated cost per smart camera
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="smartCameraHelper"
+                      aria-label="Help: smart camera cost"
+                    >
+                      ⓘ
+                    </button>
+                  </label>
+                  <div class="relative rounded-lg shadow-sm max-w-xs">
+                    <div
+                      class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-sm"
+                    >
+                      $
+                    </div>
+                    <input
+                      id="smartCameraCost"
+                      type="number"
+                      inputmode="decimal"
+                      min="1"
+                      max="10000"
+                      step="1"
+                      value="3000"
+                      class="block w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <p
+                    id="smartCameraHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    Used only as a comparison baseline representing what you typically pay today for smart or edge cameras.
+                  </p>
+                </div>
+              </div>
+
+              <!-- SECTION 3: WITH SIGHTHOUND -->
+              <div
+                id="sectionSighthound"
+                class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700"
+              >
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-2 dark:text-slate-400">
+                  <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">3</span>
+                  <span>With Sighthound Compute Node</span>
+                </h3>
+
+                <!-- Standard IP camera cost (only when not reusing cameras) -->
+                <div id="standardIpCameraCostGroup" class="space-y-1.5">
+                  <label
+                    for="dumbCameraCost"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Estimated cost per standard IP camera
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="standardIpCostHelper"
+                      aria-label="Help: standard IP camera cost"
+                    >
+                      ⓘ
+                    </button>
+                  </label>
+                  <div class="relative rounded-lg shadow-sm max-w-xs">
+                    <div
+                      class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-sm"
+                    >
+                      $
+                    </div>
+                    <input
+                      id="dumbCameraCost"
+                      type="number"
+                      inputmode="decimal"
+                      min="1"
+                      max="10000"
+                      step="1"
+                      value="250"
+                      class="block w-full rounded-lg border border-slate-300 bg-white pl-7 pr-3 py-2 text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <p
+                    id="standardIpCostHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    Typical hardware cost for a basic IP camera without analytics.
+                  </p>
+                </div>
+                <p
+                  id="scenarioBNote"
+                  class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                >
+                  Existing cameras are reused. No camera hardware replacement assumed.
+                </p>
+
+                <!-- Sighthound software selection -->
+                <div class="space-y-2">
+                  <p class="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Sighthound software analytics
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="softwareMainHelper"
+                      aria-label="Help: Sighthound software analytics"
+                    >
+                      ⓘ
+                    </button>
+                  </p>
+                  <p
+                    id="softwareMainHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    Software is priced per camera stream and billed separately from hardware.
+                  </p>
+                  <div class="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <label class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 cursor-pointer dark:border-slate-700 dark:bg-slate-900">
+                      <input
+                        id="softwareLpr"
+                        type="checkbox"
+                        class="mt-0.5 h-3.5 w-3.5 text-sky-600 border-slate-300 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <span class="flex flex-col">
+                        <span class="font-medium text-slate-800 dark:text-slate-100">
+                          LPR
+                          <button
+                            type="button"
+                            class="ml-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-300 bg-white text-[9px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                            data-helper-target="lprHelper"
+                            aria-label="Help: LPR"
+                          >
+                            ⓘ
+                          </button>
+                        </span>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400">$30 / camera / month</span>
+                        <span
+                          id="lprHelper"
+                          class="text-[11px] text-slate-500 dark:text-slate-400 hidden"
+                        >
+                          License Plate Recognition analytics per camera stream.
+                        </span>
+                      </span>
+                    </label>
+                    <label class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 cursor-pointer dark:border-slate-700 dark:bg-slate-900">
+                      <input
+                        id="softwareMmcg"
+                        type="checkbox"
+                        class="mt-0.5 h-3.5 w-3.5 text-sky-600 border-slate-300 focus:ring-sky-500 dark:border-slate-600"
+                      />
+                      <span class="flex flex-col">
+                        <span class="font-medium text-slate-800 dark:text-slate-100">
+                          MMCG
+                          <button
+                            type="button"
+                            class="ml-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-300 bg-white text-[9px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                            data-helper-target="mmcgHelper"
+                            aria-label="Help: MMCG"
+                          >
+                            ⓘ
+                          </button>
+                        </span>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400">$30 / camera / month</span>
+                        <span
+                          id="mmcgHelper"
+                          class="text-[11px] text-slate-500 dark:text-slate-400 hidden"
+                        >
+                          Make / Model / Color / Generation (vehicle analytics) per camera stream.
+                        </span>
+                      </span>
+                    </label>
+                    <div class="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                      Leave both options off for hardware-only estimates, or turn on one or both analytics as needed.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Billing frequency -->
+                <div class="space-y-1.5">
+                  <label
+                    for="softwareBillingFrequency"
+                    class="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Billing frequency
+                    <button
+                      type="button"
+                      class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                      data-helper-target="billingHelper"
+                      aria-label="Help: billing frequency"
+                    >
+                      ⓘ
+                    </button>
+                  </label>
+                  <select
+                    id="softwareBillingFrequency"
+                    class="mt-1 block max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly (annualized)</option>
+                  </select>
+                  <p
+                    id="billingHelper"
+                    class="text-xs text-slate-500 dark:text-slate-400 hidden"
+                  >
+                    This only affects recurring software cost. Hardware costs and savings do not change.
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-2 flex items-center justify-end">
+                <button
+                  id="resetCalculatorButton"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
+                >
+                  <span aria-hidden="true" class="mr-1.5 text-[0.8rem]">
+                    ↻
+                  </span>
+                  <span>Reset inputs</span>
+                </button>
+              </div>
+            </section>
+
+            <!-- Results column -->
+            <section class="space-y-4">
+              <!-- Header above results intentionally removed to avoid duplicating iframe copy and top-of-page intro. -->
+              <!-- Placeholder state -->
+              <div
+                id="resultsPlaceholder"
+                class="bg-slate-50 rounded-xl shadow-md border border-dashed border-slate-300 p-6 flex items-center justify-center text-center min-h-[220px]"
+              >
+                <p class="text-sm text-slate-500 dark:text-slate-400">
+                  Enter your camera count to see results.
+                </p>
+              </div>
+
+              <!-- Results -->
+              <div id="resultsPanel" class="hidden">
+                <!-- Cost comparison -->
+                <div
+                  id="costComparisonCard"
+                  class="bg-slate-50 rounded-xl shadow-md border border-slate-200/80 p-5 sm:p-6"
+                >
+                  <h3 class="text-sm font-semibold text-slate-800 mb-1 dark:text-slate-50">
+                    Your hardware costs
+                  </h3>
+                  <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                    A side-by-side view of todays approach versus Sighthound Compute Hardware.
+                  </p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Today -->
+                    <div class="border border-slate-200 rounded-lg p-4 flex flex-col gap-1.5 dark:border-slate-700">
+                      <p class="flex items-center justify-between gap-2 text-xs font-medium text-slate-600 uppercase tracking-wide dark:text-slate-400">
+                        <span id="todayLabelText">Today  smart AI cameras</span>
+                        <span
+                          class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                          Before
+                        </span>
+                      </p>
+                      <p
+                        id="currentTotalValue"
+                        class="text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50"
+                      >
+                        $0.00
+                      </p>
+                    </div>
+
+                    <!-- Sighthound -->
+                    <div class="border border-sky-300 rounded-lg p-4 flex flex-col gap-1.5 bg-sky-50/70 shadow-sm dark:border-sky-500/70 dark:bg-sky-950/40">
+                      <p class="text-xs font-medium text-slate-700 uppercase tracking-wide flex items-center justify-between gap-2 dark:text-slate-100">
+                        <span id="sighthoundLabelText">With Sighthound Compute Hardware</span>
+                        <span class="inline-flex items-center rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
+                          After
+                        </span>
+                      </p>
+                      <p
+                        id="sighthoundTotalValue"
+                        class="text-lg sm:text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-50"
+                      >
+                        $0.00
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Existing camera choice is now configured in the left column (Section 1) -->
+
+                  <!-- Progressive breakdown -->
+                  <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                    <button
+                      id="breakdownToggle"
+                      type="button"
+                      class="text-xs font-medium text-sky-700 hover:text-sky-800 flex items-center gap-1 dark:text-sky-400 dark:hover:text-sky-300"
+                      aria-expanded="false"
+                    >
+                      <span>Show breakdown</span>
+                      <span class="text-[10px]">▼</span>
+                    </button>
+                    <p
+                      id="breakdownHelper"
+                      class="mt-1 text-[11px] text-slate-500 dark:text-slate-400 hidden"
+                    >
+                      See exactly how each total is calculated.
+                    </p>
+                    <div
+                      id="breakdownPanel"
+                      class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-600 tabular-nums hidden dark:text-slate-400"
+                    >
+                      <div class="space-y-1.5">
+                        <p class="font-medium text-slate-700 dark:text-slate-200">Today</p>
+                        <p id="todayBreakdownLine" class="text-slate-600 dark:text-slate-400">
+                          Cameras: –
+                        </p>
+                      </div>
+                      <div class="space-y-1.5">
+                        <p class="font-medium text-slate-700 dark:text-slate-200">Sighthound Compute Hardware</p>
+                        <p id="sighthoundBreakdownNodes" class="text-slate-600 dark:text-slate-400">
+                          Compute Nodes: 2
+                        </p>
+                        <p id="sighthoundBreakdownCameras" class="text-slate-600 dark:text-slate-400">
+                          Cameras: 2
+                        </p>
+                      </div>
+                      <div
+                        id="softwareBreakdown"
+                        class="sm:col-span-2 border-t border-slate-200 pt-2 mt-2 dark:border-slate-700"
+                      >
+                        <p
+                          id="softwareBreakdownHeading"
+                          class="font-medium text-slate-700 dark:text-slate-200"
+                        >
+                          Your software costs (recurring)
+                        </p>
+                        <p
+                          id="softwareBreakdownLine"
+                          class="text-slate-600 dark:text-slate-400"
+                        >
+                          Software costs are calculated per camera per month and shown separately from hardware.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Savings card -->
+                <div
+                  id="primaryCard"
+                  class="mt-4 rounded-xl shadow-sm border border-slate-200 bg-gradient-to-br from-sky-50/80 via-slate-50 to-emerald-50/80 p-5 sm:p-6 flex flex-col gap-3 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900"
+                >
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <p
+                        id="primaryLabel"
+                        class="text-sm font-medium text-slate-700 flex items-center gap-1.5 dark:text-slate-200"
+                      >
+                        <span id="primaryLabelText">Savings vs today</span>
+                        <button
+                          type="button"
+                          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                          data-helper-target="savingsHelper"
+                          aria-label="Help: savings"
+                        >
+                          ⓘ
+                        </button>
+                      </p>
+                      <p
+                        id="primaryValue"
+                        class="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums"
+                      >
+                        $0.00
+                      </p>
+                      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Difference between smart AI cameras (today) and Sighthound Compute Node + standard IP cameras (hardware only).
+                      </p>
+                      <p
+                        id="savingsHelper"
+                        class="mt-1 text-xs text-slate-500 dark:text-slate-400 hidden"
+                      >
+                        Hardware-only comparison.
+                      </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                      <div
+                        id="primaryArrow"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                        aria-hidden="true"
+                      >
+                        <svg
+                          id="primaryArrowIcon"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          class="h-4 w-4"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M10 2a.75.75 0 0 1 .75.75v12.638l3.72-3.719a.75.75 0 1 1 1.06 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0l-5.25-5.25a.75.75 0 1 1 1.06-1.06l3.72 3.719V2.75A.75.75 0 0 1 10 2Z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <p
+                    id="recommendationText"
+                    class="text-xs text-slate-600 dark:text-slate-300"
+                  >
+                    Enter your camera count and costs to see whether Sighthound is cheaper or more expensive than today.
+                  </p>
+                </div>
+
+                <!-- Secondary metrics -->
+                <div
+                  id="deploymentDetailsCard"
+                  class="mt-4 bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-4 dark:bg-slate-900 dark:border-slate-700"
+                >
+                  <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-50">
+                    Deployment details
+                  </h3>
+                  <p
+                    id="deploymentDetailsIntro"
+                    class="text-xs text-slate-500 dark:text-slate-400"
+                  >
+                    A quick breakdown of Compute Nodes required, cost reduction, and cost per camera.
+                  </p>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-500">
+                    Assumes a typical maximum camera count per Compute Node under standard workloads. Your actual node count may vary based on retention and AI workloads.
+                  </p>
+                  <dl class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div class="space-y-1">
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">
+                        Compute Nodes required
+                        <button
+                          type="button"
+                          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                          data-helper-target="nodesHelper"
+                          aria-label="Help: nodes required"
+                        >
+                          ⓘ
+                        </button>
+                      </dt>
+                      <dd
+                        id="nodesNeededValue"
+                        class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
+                      >
+                        0
+                      </dd>
+                      <p
+                        id="nodesHelper"
+                        class="text-[11px] text-slate-500 dark:text-slate-400 hidden"
+                      >
+                        Each node supports up to 4 cameras. Rounded up.
+                      </p>
+                    </div>
+
+                    <div id="percentReductionGroup" class="space-y-1">
+                      <dt class="text-xs text-slate-500 dark:text-slate-400">% reduction</dt>
+                      <dd class="flex items-center gap-1.5">
+                        <span
+                          id="percentReductionValue"
+                          class="font-medium tabular-nums text-emerald-600"
+                        >
+                          0.0%
+                        </span>
+                        <span
+                          id="percentArrowIcon"
+                          class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                          aria-hidden="true"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            class="h-3 w-3"
+                          >
+                            <path
+                              fill-rule="evenodd"
+                              d="M10 2a.75.75 0 0 1 .75.75v12.638l3.72-3.719a.75.75 0 1 1 1.06 1.06l-5.25 5.25a.75.75 0 0 1-1.06 0l-5.25-5.25a.75.75 0 1 1 1.06-1.06l3.72 3.719V2.75A.75.75 0 0 1 10 2Z"
+                              clip-rule="evenodd"
+                            />
+                          </svg>
+                        </span>
+                      </dd>
+                    </div>
+
+                    <div class="space-y-1">
+                      <dt
+                        id="costPerCameraLabel"
+                        class="text-xs text-slate-500 dark:text-slate-400"
+                      >
+                        Cost per camera (hardware only)
+                        <button
+                          type="button"
+                          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                          data-helper-target="costPerCameraHelper"
+                          aria-label="Help: cost per camera"
+                        >
+                          ⓘ
+                        </button>
+                      </dt>
+                      <dd class="space-y-0.5">
+                        <div
+                          id="costPerCameraBeforeRow"
+                          class="flex items-center justify-between gap-2"
+                        >
+                          <span class="text-xs text-slate-500 dark:text-slate-400">Before</span>
+                          <span
+                            id="costPerCameraBeforeValue"
+                            class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
+                          >
+                            $0.00
+                          </span>
+                        </div>
+                        <div
+                          id="costPerCameraAfterRow"
+                          class="flex items-center justify-between gap-2"
+                        >
+                          <span class="text-xs text-slate-500 dark:text-slate-400">After</span>
+                          <span
+                            id="costPerCameraAfterValue"
+                            class="font-medium tabular-nums text-slate-900 dark:text-slate-50"
+                          >
+                            $0.00
+                          </span>
+                        </div>
+                      </dd>
+                      <p
+                        id="costPerCameraHelper"
+                        class="text-[11px] text-slate-500 dark:text-slate-400 hidden"
+                      >
+                        Average hardware cost across deployment.
+                      </p>
+                    </div>
+                  </dl>
+
+                  <!-- Software overview (recurring, Sighthound only) -->
+                  <div
+                    id="softwareOverview"
+                    class="mt-4 border-t border-slate-200 pt-4 space-y-1 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400"
+                  >
+                    <p
+                      id="softwareOverviewHeading"
+                      class="font-semibold text-slate-700 dark:text-slate-200"
+                    >
+                      Your software costs (recurring)
+                    </p>
+                    <p id="softwareRecurringSummary">
+                      Software cost will appear here once cameras are entered.
+                    </p>
+                    <p
+                      id="softwareSelectionNote"
+                      class="mt-1 text-[11px] text-slate-500 dark:text-slate-500"
+                    >
+                      Leave all options off for hardware-only estimates by default.
+                    </p>
+                    <p id="softwareBillingNote" class="text-[11px] text-slate-500 dark:text-slate-500">
+                      Software is billed per camera (per stream). Hardware and software costs are kept separate in all totals.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- CTA -->
+                <aside
+                  class="mt-4 rounded-xl shadow-sm border border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100/80 p-5 sm:p-6 flex flex-col gap-3 dark:border-slate-700 dark:from-slate-900 dark:to-slate-900 no-print"
+                >
+                  <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                    Export and next steps
+                  </h3>
+                  <div class="mt-1 flex flex-col gap-2">
+                    <button
+                      id="downloadPdfButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"
+                    >
+                      Download estimate as PDF
+                    </button>
+                    <a
+                      id="contactCtaLink"
+                      href="https://www.sighthound.com/contact-us"
+                      class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Contact Sighthound
+                    </a>
+                  </div>
+                  <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    Hardware is one-time. Software is recurring and shown separately above.
+                  </p>
+                </aside>
+              </div>
+            </section>
+          </div>
+        </div>
+        <!-- Shared print template root -->
+        <section id="pdfRoot" class="print-only">
+          <header class="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h1 id="pdfTitle" class="text-sm font-semibold text-slate-900">
+                Hardware savings estimate
+              </h1>
+              <p class="pdf-meta">
+                Generated with the Sighthound hardware savings calculator.
+              </p>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <p id="pdfScenario" class="pdf-meta"></p>
+              <img
+                src="assets/sighthound-logo-black.png"
+                alt="Sighthound"
+                class="h-5"
+              />
+            </div>
+          </header>
+
+          <section class="pdf-section">
+            <h2 class="text-xs font-semibold text-slate-900">Hardware totals</h2>
+            <div class="pdf-grid mt-1">
+              <div class="pdf-card">
+                <p id="pdfTodayLabel" class="text-[11px] font-medium text-slate-600"></p>
+                <p id="pdfTodayTotal" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p id="pdfSighthoundLabel" class="text-[11px] font-medium text-slate-600"></p>
+                <p id="pdfSighthoundTotal" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+            </div>
+          </section>
+
+          <section id="pdfSavingsSection" class="pdf-section">
+            <h2 class="text-xs font-semibold text-slate-900">Savings vs today (Scenario A)</h2>
+            <div class="pdf-grid mt-1">
+              <div class="pdf-card">
+                <p id="pdfSavingsLabel" class="text-[11px] text-slate-500"></p>
+                <p id="pdfSavingsValue" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Percent reduction</p>
+                <p id="pdfPercentReduction" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="pdf-section">
+            <h2 class="text-xs font-semibold text-slate-900">Deployment details</h2>
+            <div class="pdf-grid mt-1">
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Compute Nodes required</p>
+                <p id="pdfNodes" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Cost per camera before</p>
+                <p id="pdfCostPerCameraBefore" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Cost per camera with Sighthound</p>
+                <p id="pdfCostPerCameraAfter" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="pdf-section">
+            <h2 class="text-xs font-semibold text-slate-900">Software costs</h2>
+            <div class="pdf-grid mt-1">
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Monthly total</p>
+                <p id="pdfSoftwareMonthly" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Yearly total</p>
+                <p id="pdfSoftwareYearly" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="pdf-section">
+            <h2 class="text-xs font-semibold text-slate-900">Cost breakdown</h2>
+            <div class="space-y-1 mt-1 text-xs text-slate-700">
+              <p id="pdfTodayBreakdown"></p>
+              <p id="pdfNodesBreakdown"></p>
+              <p id="pdfCamerasBreakdown"></p>
+              <p id="pdfSoftwareBreakdown"></p>
+            </div>
+          </section>
+
+          <section class="pdf-section pdf-assumptions">
+            <h2 class="text-xs font-semibold text-slate-900">Inputs snapshot</h2>
+            <div class="pdf-grid mt-1">
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Total cameras</p>
+                <p id="pdfCameras" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Smart camera cost (today)</p>
+                <p id="pdfSmartCost" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Standard IP camera cost</p>
+                <p id="pdfIpCost" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Software selection</p>
+                <p id="pdfSoftwareSelection" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+              <div class="pdf-card">
+                <p class="text-[11px] text-slate-500">Billing view</p>
+                <p id="pdfBilling" class="text-sm font-semibold text-slate-900"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="pdf-section">
+            <h2 class="text-xs font-semibold text-slate-900">Assumptions &amp; definitions</h2>
+            <ul class="mt-2 text-[11px] text-slate-700 space-y-1.5">
+              <li>
+                <strong>Total number of cameras:</strong>
+                The total number of camera streams you want to analyze. Each camera counts as one stream.
+              </li>
+              <li>
+                <strong>Standard IP cameras:</strong>
+                Standard IP cameras capture video only. They do not run analytics like license plate recognition inside the camera.
+              </li>
+              <li>
+                <strong>Smart / edge cameras:</strong>
+                Smart or edge cameras process analytics inside the camera itself and typically cost more because each unit includes compute and software.
+              </li>
+              <li>
+                <strong>Savings vs today:</strong>
+                Hardware-only comparison of smart AI cameras today versus Sighthound Compute Node + standard IP cameras (Scenario A only).
+              </li>
+              <li>
+                <strong>Compute Nodes required:</strong>
+                Each node supports up to 4 cameras. Rounded up.
+              </li>
+              <li>
+                <strong>Cost per camera:</strong>
+                Average hardware cost across the deployment.
+              </li>
+              <li>
+                <strong>Sighthound software analytics:</strong>
+                Software is priced per camera stream and billed separately from hardware.
+              </li>
+            </ul>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/params-schema.js"></script>
+    <script src="assets/state-sync.js"></script>
+    <script src="assets/calc-core.js"></script>
+    <script src="assets/pdf-render.js"></script>
+    <script src="assets/mode-switch.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

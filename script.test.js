@@ -1,175 +1,182 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const calculator = require('./script');
+const core = require('./assets/calc-core');
 
 const {
   CAMERAS_PER_NODE,
   NODE_COST,
-  DEFAULT_SMART_CAMERA_COST,
-  DEFAULT_DUMB_CAMERA_COST,
-  SIGHTHOUND_SOFTWARE_COST_PER_CAMERA,
-  SIGHTHOUND_SOFTWARE_COST_BOTH_SERVICES,
   calculateNodesNeeded,
-  calculateCurrentTotal,
-  calculateSighthoundTotal,
-  calculateSavings,
+  deriveScenario,
   getSoftwareMonthlyPricePerCamera,
-  validateInputs,
-  computeTotalsFromRaw,
-} = calculator;
+  computeScenarioResults,
+} = core;
 
-// 1. Calculator correctly computes the number of nodes needed based on total cameras input
+const baseParams = {
+  cameras: 0,
+  hasExistingCameras: 0,
+  hasSmartCameras: 0,
+  smartShare: 0,
+  smartCost: 3000,
+  ipCost: 250,
+  software: 'both',
+  billing: 'monthly',
+  expandBreakdown: 0,
+  showAssumptions: 0,
+};
+
+// 1. Core correctly computes the number of nodes needed based on total cameras input
 
 test('calculateNodesNeeded computes correct node count for various camera totals', () => {
+  assert.equal(calculateNodesNeeded(0), 0);
   assert.equal(calculateNodesNeeded(1), 1);
   assert.equal(calculateNodesNeeded(CAMERAS_PER_NODE), 1);
   assert.equal(calculateNodesNeeded(CAMERAS_PER_NODE + 1), 2);
   assert.equal(calculateNodesNeeded(14), 4); // 14 cameras, 4 per node -> ceil(14/4) = 4
 });
 
-// 2. Calculator calculates total current cost using smart camera cost and total cameras
+// 2. Scenario derivation respects smart/existing flags with correct precedence
 
-test('calculateCurrentTotal multiplies total cameras by smart camera cost', () => {
-  const totalCameras = 10;
-  const smartCameraCost = 3000;
-  const expected = totalCameras * smartCameraCost;
-
-  assert.equal(calculateCurrentTotal(totalCameras, smartCameraCost), expected);
+test('deriveScenario maps flags to scenarios A/B/C as expected', () => {
+  assert.equal(deriveScenario({ ...baseParams, hasSmartCameras: 1, hasExistingCameras: 0 }), 'a');
+  assert.equal(deriveScenario({ ...baseParams, hasSmartCameras: 0, hasExistingCameras: 1 }), 'b');
+  assert.equal(deriveScenario({ ...baseParams, hasSmartCameras: 0, hasExistingCameras: 0 }), 'c');
+  // Smart cameras take precedence over existing standard IP cameras
+  assert.equal(deriveScenario({ ...baseParams, hasSmartCameras: 1, hasExistingCameras: 1 }), 'a');
 });
 
-// 3. Calculator calculates Sighthound total cost using nodes needed, node cost, and dumb camera cost
-
-test('calculateSighthoundTotal uses nodes, node cost, and dumb camera cost', () => {
-  const totalCameras = 14;
-  const dumbCameraCost = 250;
-  const nodesNeeded = Math.ceil(totalCameras / CAMERAS_PER_NODE);
-
-  const expected = nodesNeeded * NODE_COST + totalCameras * dumbCameraCost;
-  assert.equal(calculateSighthoundTotal(totalCameras, dumbCameraCost), expected);
-});
-
-// 3b. Software pricing helper chooses correct per-camera price
+// 3. Software pricing helper chooses correct per-camera price
 
 test('getSoftwareMonthlyPricePerCamera returns correct pricing for each selection', () => {
-  assert.equal(getSoftwareMonthlyPricePerCamera('lpr'), SIGHTHOUND_SOFTWARE_COST_PER_CAMERA);
-  assert.equal(getSoftwareMonthlyPricePerCamera('mmcg'), SIGHTHOUND_SOFTWARE_COST_PER_CAMERA);
-  assert.equal(getSoftwareMonthlyPricePerCamera('both'), SIGHTHOUND_SOFTWARE_COST_BOTH_SERVICES);
+  assert.equal(getSoftwareMonthlyPricePerCamera('none'), 0);
+  assert.equal(getSoftwareMonthlyPricePerCamera('lpr'), 30);
+  assert.equal(getSoftwareMonthlyPricePerCamera('mmcg'), 30);
+  assert.equal(getSoftwareMonthlyPricePerCamera('both'), 55);
   // Fallback to single-service pricing for unknown/undefined selections
-  assert.equal(getSoftwareMonthlyPricePerCamera('unknown'), SIGHTHOUND_SOFTWARE_COST_PER_CAMERA);
-  assert.equal(getSoftwareMonthlyPricePerCamera(undefined), SIGHTHOUND_SOFTWARE_COST_PER_CAMERA);
+  assert.equal(getSoftwareMonthlyPricePerCamera('unknown'), 30);
+  assert.equal(getSoftwareMonthlyPricePerCamera(undefined), 30);
 });
 
-// 4. Calculator computes savings correctly as the difference between current total and Sighthound total
+// 4. Scenario A hardware totals match legacy implementation for representative inputs
 
-test('calculateSavings returns the difference between current and Sighthound totals', () => {
-  const totalCameras = 20;
-  const smartCameraCost = 3000;
-  const dumbCameraCost = 250;
+test('computeScenarioResults scenario A matches expected hardware totals', () => {
+  const params = {
+    ...baseParams,
+    cameras: 16,
+    hasSmartCameras: 1,
+    hasExistingCameras: 0,
+    smartCost: 3000,
+    ipCost: 250,
+    software: 'both',
+    billing: 'monthly',
+  };
 
-  const currentTotal = calculateCurrentTotal(totalCameras, smartCameraCost);
-  const sighthoundTotal = calculateSighthoundTotal(totalCameras, dumbCameraCost);
-  const expectedSavings = currentTotal - sighthoundTotal;
+  const result = computeScenarioResults(params);
+  const { scenario, cameras, nodesNeeded, hardware } = result;
 
-  assert.equal(calculateSavings(currentTotal, sighthoundTotal), expectedSavings);
-});
-
-// 5. Calculator handles input validation to reject invalid camera counts and costs
-
-test('validateInputs accepts valid values', () => {
-  const result = validateInputs({
-    totalCamerasRaw: '14',
-    smartCameraCostRaw: String(DEFAULT_SMART_CAMERA_COST),
-    dumbCameraCostRaw: String(DEFAULT_DUMB_CAMERA_COST),
-  });
-
-  assert.equal(result.ok, true);
-  assert.equal(result.reason, 'valid');
-  assert.equal(result.values.totalCameras, 14);
-});
-
-test('validateInputs rejects empty total camera count (shows placeholder)', () => {
-  const result = validateInputs({
-    totalCamerasRaw: '',
-    smartCameraCostRaw: '',
-    dumbCameraCostRaw: '',
-  });
-
-  assert.equal(result.ok, false);
-  assert.equal(result.reason, 'emptyTotalCameras');
-});
-
-test('validateInputs rejects non-integer or out-of-range total camera counts', () => {
-  const cases = ['0', '-1', '10001', '1.5', 'abc'];
-
-  for (const value of cases) {
-    const result = validateInputs({
-      totalCamerasRaw: value,
-      smartCameraCostRaw: '',
-      dumbCameraCostRaw: '',
-    });
-
-    assert.equal(result.ok, false, `Expected invalid for totalCamerasRaw=${value}`);
-    assert.equal(result.reason, 'invalidTotalCameras');
-    assert.ok(result.errorMessage.includes('whole number'));
-  }
-});
-
-test('validateInputs rejects invalid smart camera costs', () => {
-  const cases = ['0', '-1', '10001'];
-
-  for (const value of cases) {
-    const result = validateInputs({
-      totalCamerasRaw: '10',
-      smartCameraCostRaw: value,
-      dumbCameraCostRaw: String(DEFAULT_DUMB_CAMERA_COST),
-    });
-
-    assert.equal(result.ok, false, `Expected invalid for smartCameraCostRaw=${value}`);
-    assert.equal(result.reason, 'invalidSmartCameraCost');
-    assert.ok(result.errorMessage.includes('$1.00'));
-  }
-});
-
-test('validateInputs rejects invalid dumb camera costs', () => {
-  const cases = ['0', '-1', '10001'];
-
-  for (const value of cases) {
-    const result = validateInputs({
-      totalCamerasRaw: '10',
-      smartCameraCostRaw: String(DEFAULT_SMART_CAMERA_COST),
-      dumbCameraCostRaw: value,
-    });
-
-    assert.equal(result.ok, false, `Expected invalid for dumbCameraCostRaw=${value}`);
-    assert.equal(result.reason, 'invalidDumbCameraCost');
-    assert.ok(result.errorMessage.includes('$1.00'));
-  }
-});
-
-// Integration-style sanity check of computeTotalsFromRaw
-
-test('computeTotalsFromRaw runs full pipeline for valid inputs', () => {
-  const totalCamerasRaw = '16';
-  const smartCameraCostRaw = '3000';
-  const dumbCameraCostRaw = '250';
-
-  const result = computeTotalsFromRaw({
-    totalCamerasRaw,
-    smartCameraCostRaw,
-    dumbCameraCostRaw,
-  });
-
-  assert.equal(result.ok, true);
-  const { nodesNeeded, currentTotal, sighthoundTotal, savings } = result.values;
+  assert.equal(scenario, 'a');
+  assert.equal(cameras, 16);
 
   const expectedNodes = Math.ceil(16 / CAMERAS_PER_NODE);
-  const expectedCurrent = 16 * 3000;
+  const expectedTodayTotal = 16 * 3000;
   const expectedSighthound = expectedNodes * NODE_COST + 16 * 250;
-  const expectedSavings = expectedCurrent - expectedSighthound;
+  const expectedSavings = expectedTodayTotal - expectedSighthound;
+  const expectedPercent = expectedTodayTotal === 0 ? 0 : (expectedSavings / expectedTodayTotal) * 100;
 
   assert.equal(nodesNeeded, expectedNodes);
-  assert.equal(currentTotal, expectedCurrent);
-  assert.equal(sighthoundTotal, expectedSighthound);
-  assert.equal(savings, expectedSavings);
+  assert.equal(hardware.todayTotal, expectedTodayTotal);
+  assert.equal(hardware.sighthoundTotal, expectedSighthound);
+  assert.equal(hardware.savings, expectedSavings);
+  assert.ok(Math.abs(hardware.percentReduction - expectedPercent) < 1e-9);
+  assert.equal(hardware.costPerCameraBefore, expectedTodayTotal / 16);
+  assert.equal(hardware.costPerCameraAfter, expectedSighthound / 16);
+});
+
+// 5. Scenario B: existing standard IP cameras (nodes-only upfront)
+
+test('computeScenarioResults scenario B nodes-only hardware behaves as expected', () => {
+  const params = {
+    ...baseParams,
+    cameras: 12,
+    hasSmartCameras: 0,
+    hasExistingCameras: 1,
+    smartCost: 3000,
+    ipCost: 250,
+    software: 'lpr',
+    billing: 'monthly',
+  };
+
+  const result = computeScenarioResults(params);
+  const { scenario, cameras, nodesNeeded, hardware } = result;
+
+  assert.equal(scenario, 'b');
+  assert.equal(cameras, 12);
+
+  const expectedNodes = Math.ceil(12 / CAMERAS_PER_NODE);
+  const expectedTodayTotal = 12 * 3000; // smart cameras baseline (unchanged from legacy math)
+  const expectedSighthound = expectedNodes * NODE_COST; // nodes only
+
+  assert.equal(nodesNeeded, expectedNodes);
+  assert.equal(hardware.todayTotal, expectedTodayTotal);
+  assert.equal(hardware.sighthoundTotal, expectedSighthound);
+  assert.equal(hardware.costPerCameraAfter, expectedSighthound / 12);
+});
+
+// 6. Scenario C: new deployment (nodes + IP cameras; no current cameras)
+
+test('computeScenarioResults scenario C includes nodes + cameras with no baseline', () => {
+  const params = {
+    ...baseParams,
+    cameras: 8,
+    hasSmartCameras: 0,
+    hasExistingCameras: 0,
+    smartCost: 3000,
+    ipCost: 250,
+    software: 'mmcg',
+    billing: 'yearly',
+  };
+
+  const result = computeScenarioResults(params);
+  const { scenario, cameras, nodesNeeded, hardware } = result;
+
+  assert.equal(scenario, 'c');
+  assert.equal(cameras, 8);
+
+  const expectedNodes = Math.ceil(8 / CAMERAS_PER_NODE);
+  const expectedSighthound = expectedNodes * NODE_COST + 8 * 250;
+  const expectedTodayTotal = 8 * 3000; // smart cameras baseline (not shown in UI for scenario C)
+
+  assert.equal(nodesNeeded, expectedNodes);
+  assert.equal(hardware.todayTotal, expectedTodayTotal);
+  assert.equal(hardware.sighthoundTotal, expectedSighthound);
+  assert.equal(hardware.costPerCameraBefore, expectedTodayTotal / 8);
+  assert.equal(hardware.costPerCameraAfter, expectedSighthound / 8);
+});
+
+// 7. Software totals reflect selection and camera count
+
+test('computeScenarioResults software section respects selection and billing', () => {
+  const paramsMonthly = {
+    ...baseParams,
+    cameras: 10,
+    software: 'both',
+    billing: 'monthly',
+  };
+
+  const monthlyResult = computeScenarioResults(paramsMonthly);
+  assert.equal(monthlyResult.software.monthlyPerCamera, 55);
+  assert.equal(monthlyResult.software.monthlyTotal, 10 * 55);
+  assert.equal(monthlyResult.software.yearlyTotal, 12 * 10 * 55);
+
+  const paramsNone = {
+    ...baseParams,
+    cameras: 10,
+    software: 'none',
+    billing: 'yearly',
+  };
+
+  const noneResult = computeScenarioResults(paramsNone);
+  assert.equal(noneResult.software.monthlyPerCamera, 0);
+  assert.equal(noneResult.software.monthlyTotal, 0);
+  assert.equal(noneResult.software.yearlyTotal, 0);
 });

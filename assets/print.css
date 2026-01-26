@@ -1,0 +1,125 @@
+/* Shared print styles for Guided and Live calculator PDFs */
+
+/* Screen helpers: default .print-only is hidden on screen */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 0.5in;
+  }
+
+  body {
+    background: #ffffff;
+    font-size: 0.8rem;
+  }
+
+  h1 {
+    font-size: 1.15rem;
+  }
+
+  h2,
+  h3 {
+    font-size: 0.95rem;
+  }
+
+  /* Hide interactive-only UI */
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  /* When printing, hide interactive UI and show only the shared PDF template */
+  .max-w-6xl > :not(#pdfRoot) {
+    display: none !important;
+  }
+
+  /* Tighter layout for PDF containers */
+  .max-w-6xl,
+  .max-w-3xl {
+    max-width: 7.5in !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+
+  /* Compact cards and sections */
+  .bg-slate-50,
+  .bg-white,
+  .bg-gradient-to-br,
+  .bg-gradient-to-r {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0.6rem * calc(1 - var(--tw-space-y-reverse))) !important;
+    margin-bottom: calc(0.6rem * var(--tw-space-y-reverse)) !important;
+  }
+
+  .mt-4 {
+    margin-top: 0.5rem !important;
+  }
+
+  .mb-6 {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .py-8,
+  .sm\:py-10 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+
+  .text-3xl,
+  .text-4xl {
+    font-size: 1.35rem !important;
+  }
+
+  /* PDF root specific layout */
+  #pdfRoot {
+    page-break-inside: avoid;
+  }
+
+  #pdfRoot header {
+    margin-bottom: 0.75rem;
+  }
+
+  #pdfRoot .pdf-section {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  #pdfRoot .pdf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+
+  #pdfRoot .pdf-card {
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 0.75rem;
+  }
+
+  #pdfRoot .pdf-meta {
+    font-size: 0.7rem;
+    color: #6b7280;
+  }
+
+  #pdfRoot .pdf-assumptions {
+    page-break-before: always;
+    break-before: page;
+  }
+}
