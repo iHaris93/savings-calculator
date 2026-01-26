@@ -51,7 +51,306 @@ The tool is used in sales conversations, demos, and follow-ups to make Sighthoun
    - Uses existing camera toggle to model reuse vs. full refresh.
    - Checks whether Sighthound is cheaper or more expensive in their case.
 
-## 4. Functional Requirements
+## 4. Modes & Entry Points
+
+The calculator is delivered as a dual-mode, single-site experience. Both modes share the same math, constants, and URL parameter model; they differ only in layout and interaction style.
+
+### 4.1 Modes
+
+- **Guided estimate**
+  - Entry point: `index.html`.
+  - Primary audience: prospects and partners who want a structured, narrative walkthrough.
+  - UX:
+    - Card / step-based flow with progressive disclosure and contextual copy.
+    - Emphasizes explanation, assumptions, and scenario framing.
+  - Behavior:
+    - Reads and writes the canonical URL parameters defined in this SPEC.
+    - Uses shared calculation core for all hardware and software math.
+    - Can be deep-linked via URL; mode is indicated but does not affect math.
+
+- **Live comparison**
+  - Entry point: `live.html`.
+  - Primary audience: Sighthound sales and SEs for live demos and “on-the-fly” comparisons.
+  - UX:
+    - Two-column layout: inputs on the left, results on the right.
+    - Results update instantly as inputs change.
+  - Behavior:
+    - Reads and writes the same canonical URL parameters as Guided.
+    - Uses the same calculation core and constants.
+    - Designed to stay on a single screen for typical demo resolutions.
+
+### 4.2 Shared header and mode switch
+
+- Both `index.html` and `live.html` include a shared header with:
+  - Sighthound logo and product label (“Hardware savings calculator”).
+  - A **mode switch** with two options:
+    - “Guided estimate”
+    - “Live comparison”
+- The active mode is visually highlighted; the inactive mode is rendered as a secondary button or link.
+
+### 4.3 Mode switching behavior
+
+- Clicking the inactive mode:
+  - Reads the current canonical parameter set from the URL and in-memory state.
+  - Updates the `mode` parameter to the target view.
+  - Navigates:
+    - From Guided → Live: `live.html?{same-query-params}`.
+    - From Live → Guided: `index.html?{same-query-params}`.
+- **State preservation**
+  - All inputs that affect results (camera count, costs, scenarios, software, billing, etc.) are preserved when switching modes.
+  - Mode is a **presentation concern only**; it must not change underlying calculations.
+
+## 5. Canonical URL Parameter Schema
+
+All math-relevant state and key presentation choices are represented via a single, canonical URL parameter schema. Both Guided and Live modes are views over the same parameter set.
+
+### 5.1 Principles
+
+- Every input that affects numbers or visible summaries **must** be representable as URL parameters.
+- The schema is **mode-agnostic**:
+  - `mode` selects the view; all other parameters are shared.
+- Parameters are stable: renames or removals require SPEC, README, implementation, and test updates.
+- Invalid or unknown values must be safely normalized back to documented defaults.
+
+### 5.2 Core/common parameters
+
+- `mode`
+  - Values: `guided` | `live`.
+  - Default: determined by the entry HTML (`index.html` vs `live.html`).
+  - Behavior: treated as a presentation concern only; **does not affect math**.
+
+- `cameras`
+  - Meaning: total number of camera streams in the scenario.
+  - Type: integer `>= 0`.
+  - Default: `0` (UI may suggest a non-zero starting value).
+  - Maps to: `totalCameras` in calculation functions.
+
+### 5.3 Existing deployment flags and scenario derivation
+
+- `hasExistingCameras`
+  - Values: `0` or `1`.
+  - Meaning: whether there is an installed base of standard IP cameras.
+  - Used for: detecting reuse scenarios (Scenario B) and deciding whether to include new camera hardware cost on the Sighthound side.
+
+- `hasSmartCameras`
+  - Values: `0` or `1`.
+  - Meaning: whether the current environment includes smart / edge cameras with built-in analytics.
+  - Used for: detecting smart-camera baseline scenarios (Scenario A).
+
+The high-level scenario (`a`, `b`, or `c`) is **derived from these flags**, not stored as a separate URL parameter:
+
+- `hasSmartCameras = 1` → Scenario A (smart cameras today vs Sighthound).
+- `hasSmartCameras = 0` and `hasExistingCameras = 1` → Scenario B (existing standard IP cameras reused).
+- Both flags `0` → Scenario C (new deployment).
+
+### 5.4 Hardware cost parameters
+
+- `smartCost`
+  - Meaning: per-camera hardware cost (or equivalent uplift) for smart / edge cameras in the “today” comparison.
+  - Type: number `>= 0`.
+  - Default: canonical smart camera cost from the calculation core when omitted.
+
+- `ipCost`
+  - Meaning: per-camera hardware cost for standard IP cameras.
+  - Type: number `>= 0`.
+  - Default: canonical IP camera cost from the calculation core when omitted.
+
+- `currency`
+  - Values: currently `usd` only.
+  - Default: `usd`.
+  - Behavior: affects formatting only; does not change underlying math.
+
+### 5.5 Software configuration parameters
+
+- `software`
+  - Meaning: selected Sighthound software package for the scenario.
+  - Values:
+    - `none` – no software bundle selected.
+    - `lpr` – License Plate Recognition only.
+    - `mmcg` – Make / Model / Color / Generation only.
+    - `both` – combined LPR + MMCG bundle.
+  - Default: `both` (or product decision; must be kept in sync across code, tests, and this SPEC).
+
+- `billing`
+  - Meaning: software billing view used in the UI.
+  - Values:
+    - `monthly`
+    - `yearly`
+  - Default: `monthly`.
+  - Behavior:
+    - Underlying software prices are defined per camera per **month**.
+    - `yearly` view multiplies by 12 for display only; hardware math remains unchanged.
+
+### 5.6 Presentation / UX parameters
+
+- `expandBreakdown`
+  - Values: `0` or `1`.
+  - Meaning: whether the cost breakdown sections start expanded on initial load.
+  - Default: `0` (collapsed).
+
+- `showAssumptions`
+  - Values: `0` or `1`.
+  - Meaning: whether the assumptions / definitions panel is visible by default.
+  - Default: `0`.
+
+### 5.7 Behavior & normalization
+
+- On page load:
+  - Both modes parse `location.search` into a raw parameter object.
+  - A shared normalizer:
+    - Validates and coerces types (numbers, booleans, enums).
+    - Applies defaults for any missing or invalid values.
+- On input change:
+  - In-memory params are updated.
+  - URL is updated via `history.replaceState` without full reload.
+  - Both modes must use the same helper to transform params back into a query string.
+
+- Backward compatibility:
+  - New parameters must be optional and safely defaulted.
+  - Old URLs that omit new params must still produce sensible defaults and not throw errors.
+
+## 6. Scenarios & Software Configuration
+
+This section defines the canonical scenarios (A/B/C), software bundles, and how they interact with the hardware comparison.
+
+### 6.1 Hardware scenarios
+
+All scenarios ultimately feed the same underlying hardware formulas (see Functional Requirements). The differences are in assumptions about what already exists.
+
+- **Scenario A – Smart cameras today vs Sighthound**
+  - Detection: `hasSmartCameras = 1`.
+  - Assumptions:
+    - Deployment uses smart / edge cameras today.
+    - Comparison is against Sighthound Compute Nodes + standard IP cameras.
+
+- **Scenario B – Existing standard IP deployment**
+  - Detection: `hasSmartCameras = 0` and `hasExistingCameras = 1`.
+  - Assumptions:
+    - Customer already has standard IP cameras installed.
+    - Sighthound reuses this installed base.
+
+- **Scenario C – New deployment**
+  - Detection: `hasSmartCameras = 0` and `hasExistingCameras = 0`.
+  - Assumptions:
+    - No existing cameras; both smart and IP camera hardware are net new.
+
+Each mode (Guided / Live) may present these scenarios differently (e.g., labels, helper text), but they must map back to these canonical values and assumptions.
+
+### 6.2 Software bundles and pricing
+
+Software pricing is fixed per camera stream and is kept separate from hardware totals.
+
+- **Canonical per-camera software prices (monthly)**
+  - LPR only: `$30 / camera / month`.
+  - MMCG only: `$30 / camera / month`.
+  - Both (LPR + MMCG bundle): `$55 / camera / month`.
+
+These values:
+
+- Are treated as **business-critical constants**.
+- Live in the shared calculation core and must be reflected consistently in:
+  - Implementation.
+  - Tests.
+  - README.
+  - This SPEC.
+
+### 6.3 Software selection and billing
+
+- **Software selection (`software` param)**
+  - Drives which per-camera price is used.
+  - Affects only **recurring software summaries**, not hardware totals.
+
+- **Billing view (`billing` param)**
+  - `monthly`:
+    - Shows monthly software totals directly from per-camera monthly rates.
+  - `yearly`:
+    - Shows 12× the monthly totals for the same configuration.
+    - Purely a display choice; does not alter any underlying assumptions.
+
+### 6.4 Interaction with hardware savings
+
+- Hardware savings cards and totals:
+  - Are always **hardware-only**.
+  - Do not incorporate software costs directly.
+- Software sections:
+  - Present recurring software costs and/or differences between packages.
+  - Must be clearly labeled as “software” and “recurring”.
+  - Must not be confused with the primary hardware savings number.
+
+## 7. PDF / Print Export
+
+The calculator supports a shared print/PDF export used by both modes for follow-ups and documentation.
+
+### 7.1 Goals
+
+- Provide a single, consistent PDF that:
+  - Captures key inputs (cameras, costs, scenario, software, billing).
+  - Shows the same hardware and software outputs as the on-screen view.
+  - Includes a concise assumptions and definitions section.
+- Ensure sales can:
+  - Export a clean summary from either Guided or Live.
+  - Attach it to emails or proposals without manual editing.
+
+### 7.2 Behavior
+
+- **Trigger**
+  - A dedicated “Download estimate as PDF” or equivalent call-to-action exists (at minimum) in Live mode.
+  - Guided mode may reuse the same print behavior via the shared export module.
+
+- **Rendering**
+  - Export is implemented via the browser’s print subsystem (`window.print()`).
+  - A dedicated print root (`pdfRoot`) is populated with:
+    - Hardware totals (today vs Sighthound).
+    - Savings and percent reduction.
+    - Node count and per-camera hardware costs.
+    - Software recurring totals (monthly and yearly).
+    - A snapshot of key inputs.
+    - A short assumptions & definitions list.
+  - Screen-only UI elements (helper buttons, mode switch, non-essential copy) are hidden in print.
+
+### 7.3 Data source and consistency
+
+- All values rendered into the PDF:
+  - Must be computed from the same canonical calculation functions used by the on-screen UI.
+  - Must use the **same** canonical URL parameter object as the page.
+- Any change to:
+  - Hardware formulas.
+  - Software pricing.
+  - Node capacity assumptions.
+  - Must be reflected in:
+    - On-screen cards.
+    - PDF export.
+    - README.
+    - This SPEC.
+    - Associated tests.
+
+### 7.4 Layout requirements
+
+- Logo and title:
+  - Sighthound logo and a “Hardware savings estimate” title appear at the top.
+- Sections:
+  - Hardware totals.
+  - Savings vs today.
+  - Deployment details (nodes, per-camera costs).
+  - Software costs (monthly and yearly).
+  - Inputs snapshot.
+  - Assumptions & definitions.
+- Clarity:
+  - Hardware vs software are visually and textually separated.
+  - Negative savings (extra cost) use the same labeling rules as the on-screen view.
+
+### 7.5 Cross-browser expectations
+
+- PDFs must render acceptably in:
+  - Chrome.
+  - Edge.
+  - Safari.
+- At minimum:
+  - No truncated content.
+  - No missing critical sections.
+  - Typography and spacing remain readable on standard page sizes.
+
+## 8. Functional Requirements
 
 ### 4.1 Inputs
 

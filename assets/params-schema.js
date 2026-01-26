@@ -12,10 +12,9 @@
     cameras: 0,
     hasExistingCameras: 0,
     hasSmartCameras: 0,
-    smartShare: 0,
     smartCost: 3000,
     ipCost: 250,
-    software: 'both',
+    software: 'none',
     billing: 'monthly',
     expandBreakdown: 0,
     showAssumptions: 0,
@@ -25,7 +24,6 @@
     'cameras',
     'hasExistingCameras',
     'hasSmartCameras',
-    'smartShare',
     'smartCost',
     'ipCost',
     'software',
@@ -100,8 +98,6 @@
     if (normalized.hasSmartCameras && normalized.hasExistingCameras) {
       normalized.hasExistingCameras = 0;
     }
-
-    normalized.smartShare = toInt(src.smartShare, DEFAULTS.smartShare, 0, 100);
 
     normalized.smartCost = toNumber(src.smartCost, DEFAULTS.smartCost, 0);
     normalized.ipCost = toNumber(src.ipCost, DEFAULTS.ipCost, 0);

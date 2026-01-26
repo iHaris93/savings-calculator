@@ -66,6 +66,9 @@
 
   var softwareMonthlyEl = document.getElementById('guidedSoftwareMonthly');
   var softwareYearlyEl = document.getElementById('guidedSoftwareYearly');
+  var softwareMonthlyCardEl = document.getElementById('guidedSoftwareMonthlyCard');
+  var softwareYearlyCardEl = document.getElementById('guidedSoftwareYearlyCard');
+  var smartCostGroupEl = document.getElementById('guidedSmartCostGroup');
 
   var breakdownToggleEl = document.getElementById('guidedBreakdownToggle');
   var breakdownPanelEl = document.getElementById('guidedBreakdown');
@@ -133,6 +136,19 @@
   function goToStep(index) {
     currentStepIndex = clampStepIndex(index);
     updateStepUi();
+
+    // When entering the cameras & hardware step (Step 2), ensure the smart camera
+    // cost group visibility matches the currently selected scenario. This guards
+    // against cases where the user changes Scenario A/B/C and then navigates back.
+    if (smartCostGroupEl && currentStepIndex === 1) {
+      var params = state.getParams();
+      var scenarioKey = inferScenarioFromParams(params); // 'smart' | 'existingIp' | 'new'
+      if (scenarioKey === 'smart') {
+        smartCostGroupEl.classList.remove('hidden');
+      } else {
+        smartCostGroupEl.classList.add('hidden');
+      }
+    }
   }
 
   function inferScenarioFromParams(p) {
@@ -329,12 +345,23 @@
     var software = result.software;
     var breakdown = result.breakdown;
 
+    // Show or hide the smart camera cost input group based on scenario.
+    var scenario = result.scenario; // 'a', 'b', 'c'
+    if (smartCostGroupEl) {
+      if (scenario === 'a') {
+        smartCostGroupEl.classList.remove('hidden');
+      } else {
+        smartCostGroupEl.classList.add('hidden');
+      }
+    }
+
     if (resultsStatusEl) {
       resultsStatusEl.textContent = 'Estimate updated. Adjust inputs and click Show estimate to recalculate.';
     }
     if (resultsPlaceholderEl) resultsPlaceholderEl.classList.add('hidden');
     if (resultsBodyEl) resultsBodyEl.classList.remove('hidden');
 
+    // scenario already computed above
     var scenario = result.scenario; // 'a', 'b', 'c'
     var scenarioText;
     if (scenario === 'a') {
@@ -348,21 +375,51 @@
       scenarioSummaryEl.textContent = scenarioText;
     }
 
-    if (todayTotalEl) {
-      todayTotalEl.textContent = CalcCore.formatCurrency(hardware.todayTotal);
-    }
-    if (sighthoundTotalEl) {
-      sighthoundTotalEl.textContent = CalcCore.formatCurrency(hardware.sighthoundTotal);
+    // Hardware totals: mirror Live behavior so we do not show a misleading smart-camera
+    // baseline when there is no well-defined "today" architecture.
+    if (todayTotalEl && sighthoundTotalEl) {
+      // Also keep the small headings aligned with calc-core labels so Guided and Live
+      // speak the same language.
+      var todayLabelEl = document.getElementById('guidedTodayLabel');
+      var sighthoundLabelEl = document.getElementById('guidedSighthoundLabel');
+      if (hardware.labels) {
+        if (todayLabelEl && hardware.labels.todayLabel) {
+          todayLabelEl.textContent = hardware.labels.todayLabel;
+        }
+        if (sighthoundLabelEl && hardware.labels.sighthoundLabel) {
+          sighthoundLabelEl.textContent = hardware.labels.sighthoundLabel;
+        }
+      }
+
+      if (scenario === 'a') {
+        // Full smart vs Sighthound comparison.
+        todayTotalEl.textContent = CalcCore.formatCurrency(hardware.todayTotal);
+        sighthoundTotalEl.textContent = CalcCore.formatCurrency(hardware.sighthoundTotal);
+      } else if (scenario === 'b') {
+        // Existing IP cameras are already installed; only nodes are new hardware.
+        todayTotalEl.textContent = 'Already installed';
+        sighthoundTotalEl.textContent = CalcCore.formatCurrency(hardware.sighthoundTotal);
+      } else {
+        // New deployment: no current cameras.
+        todayTotalEl.textContent = 'No current cameras (new deployment)';
+        sighthoundTotalEl.textContent = CalcCore.formatCurrency(hardware.sighthoundTotal);
+      }
     }
 
     if (nodesValueEl) {
       nodesValueEl.textContent = String(result.nodesNeeded);
     }
-    if (costPerBeforeEl) {
-      costPerBeforeEl.textContent = CalcCore.formatCurrency(hardware.costPerCameraBefore);
-    }
-    if (costPerAfterEl) {
-      costPerAfterEl.textContent = CalcCore.formatCurrency(hardware.costPerCameraAfter);
+
+    // Cost per camera: before/after only makes sense for Scenario A. For B/C we
+    // only surface the Sighthound "after" cost, consistent with Live and PDF.
+    if (costPerBeforeEl && costPerAfterEl) {
+      if (scenario === 'a') {
+        costPerBeforeEl.textContent = CalcCore.formatCurrency(hardware.costPerCameraBefore);
+        costPerAfterEl.textContent = CalcCore.formatCurrency(hardware.costPerCameraAfter);
+      } else {
+        costPerBeforeEl.textContent = '–';
+        costPerAfterEl.textContent = CalcCore.formatCurrency(hardware.costPerCameraAfter);
+      }
     }
 
     if (softwareMonthlyEl) {
@@ -370,6 +427,18 @@
     }
     if (softwareYearlyEl) {
       softwareYearlyEl.textContent = CalcCore.formatCurrency(software.yearlyTotal);
+    }
+
+    // Reflect billing toggle in which software total is emphasized/shown.
+    var billing = (p.billing === 'yearly') ? 'yearly' : 'monthly';
+    if (softwareMonthlyCardEl && softwareYearlyCardEl) {
+      if (billing === 'monthly') {
+        softwareMonthlyCardEl.classList.remove('hidden');
+        softwareYearlyCardEl.classList.add('hidden');
+      } else {
+        softwareMonthlyCardEl.classList.add('hidden');
+        softwareYearlyCardEl.classList.remove('hidden');
+      }
     }
 
     if (scenario === 'a') {

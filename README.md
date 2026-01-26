@@ -34,6 +34,26 @@ All results are based on fixed, documented assumptions about hardware capacity a
 
 This is **public-facing**: copy and behavior should be safe to put in front of customers as-is.
 
+### Modes: Guided estimate vs Live comparison
+
+The calculator is delivered as a **dual-mode, single-site** experience:
+
+- **Guided estimate** (`index.html`)
+  - Narrative, step-by-step wizard.
+  - Helps a prospect or partner answer a few structured questions and then see one coherent estimate.
+  - Emphasizes assumptions, scenario framing, and explanations.
+
+- **Live comparison** (`live.html`)
+  - Two-column "inputs vs results" layout designed for demos and screen-shares.
+  - Updates instantly as you type.
+  - Optimized for quick exploration and "what if we change X?" conversations.
+
+Both modes:
+
+- Use the **same math core** (`assets/calc-core.js`).
+- Share the same **canonical URL parameter schema** (see below).
+- Are just two different views over the **same scenario and inputs**.
+
 ### What problem it solves
 
 Buying smart AI cameras for every location pushes AI compute into each device, which is often expensive and inflexible. Sighthound’s approach centralizes AI compute into a dedicated node that can serve multiple standard IP cameras.
@@ -134,24 +154,78 @@ The calculator computes:
    costPerCameraAfter  = sighthoundTotal / totalCameras
    ```
 
-7. **Optional software comparison (monthly)**
+7. **Software pricing model (bundles + billing)**
 
-   If the user provides a current software cost per camera per month, we also compute an optional monthly software comparison. This is **not** included in any of the hardware totals or savings numbers; it is surfaced as a separate, clearly labeled section in the UI.
+The newer dual-mode calculator treats software in a more explicit way than the original "single optional software cost" field:
 
-   ```
-   if currentSoftwarePerCamera is provided:
-     softwareCurrentMonthly   = totalCameras × currentSoftwarePerCamera
-     softwareSighthoundMonthly = totalCameras × SIGHTHOUND_SOFTWARE_COST_PER_CAMERA
-     softwareDeltaMonthly      = softwareCurrentMonthly − softwareSighthoundMonthly
-   else:
-     softwareCurrentMonthly   = null
-     softwareSighthoundMonthly = null
-     softwareDeltaMonthly      = null
-   ```
+- Per-camera pricing (monthly, canonical values):
+  - **LPR only** (`software = lpr`): `$30 / camera / month`
+  - **MMCG only** (`software = mmcg`): `$30 / camera / month`
+- **LPR + MMCG bundle** (`software = both`): `$55 / camera / month`
+- **No analytics** (`software = none`): `$0 / camera / month` *(default)*
 
-   - When the inputs are valid, the UI reveals a small "Software costs (monthly, optional estimate)" section.
-   - The "Monthly software difference" line is colored and labeled as either **savings** (green, negative delta) or **extra cost** (red, positive delta).
-   - When no software cost per camera is entered, the entire software comparison section remains hidden, to keep the default view focused on hardware only.
+- Billing view:
+  - `billing = monthly`:
+    - Shows monthly totals based directly on the per-camera rates.
+  - `billing = yearly`:
+    - Shows 12× the monthly totals for the same configuration.
+    - This is a pure display change; the underlying math is always monthly.
+
+Important constraints:
+
+- **Hardware vs software**: hardware totals and savings cards are **always hardware-only**. Software is kept in its own section both on-screen and in the PDF.
+- **No "software saves you money" baked into hardware results**: even if software spend changes, the primary savings card never includes it.
+
+### Scenarios: A, B, and C
+
+Internally, the calculator supports three deployment scenarios. These are not separate codepaths; they are all handled by the same `computeScenarioResults(params)` function in `assets/calc-core.js`. The scenario is derived from the `hasSmartCameras` / `hasExistingCameras` flags:
+
+- **Scenario A – Smart cameras today vs Sighthound**
+  - Detection: `hasSmartCameras = 1`.
+  - Assumptions:
+    - Today you primarily deploy smart / edge cameras with built-in AI.
+    - We compare that architecture directly against Sighthound Compute Nodes + standard IP cameras.
+  - Behavior:
+    - "Today" total = `cameras × smartCost`.
+    - "With Sighthound" total = `nodes × NODE_COST + cameras × ipCost`.
+    - Savings card, percent reduction, and per-camera **before/after** are shown.
+    - This is the classic "smart vs Sighthound" story.
+
+- **Scenario B – Existing standard IP deployment (reuse)**
+  - Detection: `hasSmartCameras = 0` and `hasExistingCameras = 1`.
+  - Assumptions:
+    - You already own standard IP cameras.
+    - Sighthound reuses this installed base; there is **no new camera hardware spend**.
+  - Behavior:
+    - "Existing camera hardware" is treated as already paid for.
+    - Sighthound hardware total = `nodes × NODE_COST` only.
+    - On-screen:
+      - "Today" column: "Already installed" instead of a dollar value.
+      - Savings % and "before" per-camera cost are **hidden** (we cannot honestly compute them).
+      - Only "after" per-camera enablement cost is shown.
+    - PDF output mirrors the same semantics (no synthetic "today" dollar total).
+
+- **Scenario C – New deployment**
+  - Detection: `hasSmartCameras = 0` and `hasExistingCameras = 0`.
+  - Assumptions:
+    - There is no existing camera hardware; both smart cameras and IP cameras would be net new.
+  - Behavior:
+    - Sighthound side: `nodes × NODE_COST + cameras × ipCost` (new deployment sized with nodes + IP cameras).
+    - There is no real "today vs Sighthound" baseline yet.
+    - On-screen and in the PDF:
+      - "Today" is labeled as "No current cameras (new deployment)" and shown as a dash rather than a number.
+      - Savings % and "before" per-camera cost are hidden.
+      - Only Sighthound deployment totals and per-camera cost are highlighted.
+
+Both Guided and Live are just different UIs over these same scenarios:
+
+- Guided exposes them as:
+  - Smart / edge cameras today.
+  - Existing standard IP cameras.
+  - New deployment.
+- Live exposes them via two toggles:
+  - "Do you already have standard IP cameras installed?"
+  - "Do you currently use smart / edge cameras with built-in analytics?"
 
 ### Existing camera toggle
 
@@ -298,6 +372,7 @@ If you are considering adding a framework or bundler, treat that as a significan
   - Favor clear, literal language over marketing slogans.
 - **Maintain URL-based state sharing**
   - The calculator persists camera count and price inputs into URL parameters.
+  - URL read/write logic is centralized in `assets/state.js` (`readState()`, `writeState(state)`, `buildUrl(targetPage)`).
   - When extending the app, keep this behavior intact so links remain shareable.
 
 ### Don’t
@@ -342,6 +417,88 @@ Treat changes here carefully and keep tests and documentation in sync:
 - **Savings labeling and sign logic:**
   - The UI intentionally distinguishes between savings and extra cost, with color and copy changes.
   - Avoid making changes that could make negative outcomes look positive or ambiguous.
+
+### Canonical URL-backed state (Guided + Live)
+
+Both `index.html` (Guided) and `live.html` (Live) read and write a **shared canonical param object** via `assets/params-schema.js` and `assets/state-sync.js`. Any change in one mode is reflected in the other as soon as you switch modes or copy the URL.
+
+#### Core parameters
+
+- `cameras`
+  - Meaning: total number of camera streams in the scenario.
+  - Type: integer, clamped `0–10,000`.
+  - Used for: node count, hardware totals, software totals.
+
+- `hasExistingCameras`
+  - Meaning: whether there is an installed base of **standard IP cameras** that can be reused.
+  - Values: `0` or `1`.
+  - Used for: **Scenario B** detection (see above) and to decide whether to charge for new camera hardware.
+
+- `hasSmartCameras`
+  - Meaning: whether the current environment uses **smart / edge cameras** with built-in analytics.
+  - Values: `0` or `1`.
+  - Used for: **Scenario A** detection.
+
+- `smartCost`
+  - Meaning: per-camera hardware cost for smart / edge cameras in the "today" baseline.
+  - Type: number `>= 0`. Default `3000`.
+  - Used for: the "Today" (smart-camera) side of Scenario A and internal baselines.
+
+- `ipCost`
+  - Meaning: per-camera hardware cost for standard IP cameras.
+  - Type: number `>= 0`. Default `250`.
+  - Used for: Sighthound camera hardware totals in scenarios where new IP cameras are purchased.
+
+> Note: there is **no separate `scenario` param** in the URL. Instead, the scenario is derived from these flags:
+> - `hasSmartCameras=1` → Scenario A (smart cameras today vs Sighthound).
+> - `hasExistingCameras=1` and no smart cameras → Scenario B (existing IP cameras reused).
+> - Both flags `0` → Scenario C (new deployment).
+
+#### Software and billing parameters
+
+- `software`
+  - Meaning: which Sighthound analytics bundle is selected.
+  - Values:
+    - `none` – no analytics (hardware-only view).
+    - `lpr` – License Plate Recognition only.
+    - `mmcg` – Make / Model / Color / Generation only.
+    - `both` – bundled LPR + MMCG.
+  - Default: `both`.
+  - Used for: per-camera monthly software pricing via `SOFTWARE_PRICING` in `calc-core`.
+
+- `billing`
+  - Meaning: display mode for recurring software costs.
+  - Values:
+    - `monthly`
+    - `yearly`
+  - Default: `monthly`.
+  - Behavior:
+    - All pricing is defined **per camera per month** in `calc-core`.
+    - `yearly` view simply shows 12× the monthly totals; hardware math is unchanged.
+
+#### Presentation / UX parameters
+
+- `expandBreakdown`
+  - Meaning: whether cost breakdown sections start expanded.
+  - Values: `0` or `1`.
+  - Default: `0`. Only `1` is written to the URL.
+
+- `showAssumptions`
+  - Reserved for future use. Same 0/1 semantics as `expandBreakdown`.
+
+#### URL formatting rules
+
+The param helpers in `assets/params-schema.js` enforce a few normalization rules:
+
+- Out-of-range or invalid values are coerced back to safe defaults.
+- `cameras` is omitted from the URL when `0` so an empty state produces a clean URL.
+- Boolean flags are only written when `1` (truthy); `0` is treated as "unset" and omitted.
+- Unknown query parameters are ignored.
+
+All read/write logic for this schema lives in:
+
+- `assets/params-schema.js` – `readParamsFromUrl`, `normalizeParams`, `buildSearchFromParams`.
+- `assets/state-sync.js` – `initState()` with a small observable state container and debounced `history.replaceState`.
 
 ---
 

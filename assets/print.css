@@ -38,6 +38,11 @@
     padding: 0 !important;
   }
 
+  /* When printing, hide interactive UI and show only the shared PDF template */
+  .max-w-6xl > :not(#pdfRoot) {
+    display: none !important;
+  }
+
   /* Tighter layout for PDF containers */
   .max-w-6xl,
   .max-w-3xl {

@@ -168,7 +168,7 @@
   }
 
   function computeSoftware(params, cameras) {
-    const selectionRaw = params.software || 'both';
+    const selectionRaw = params.software || 'none';
     const billing = (params.billing || 'monthly').toLowerCase() === 'yearly'
       ? 'yearly'
       : 'monthly';

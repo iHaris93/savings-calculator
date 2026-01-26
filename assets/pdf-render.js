@@ -58,7 +58,16 @@
     var smartCost = params && typeof params.smartCost === 'number' ? params.smartCost : 3000;
     var ipCost = params && typeof params.ipCost === 'number' ? params.ipCost : 250;
 
-    setText('pdfSmartCost', formatCurrency(smartCost));
+    // Smart camera cost is only relevant for Scenario A; hide it for B/C so we
+    // don't imply a smart-camera baseline where there isn't one.
+    if (result.scenario === 'a') {
+      setText('pdfSmartCost', formatCurrency(smartCost));
+    } else {
+      var smartCard = targetEl.querySelector('#pdfSmartCost') && targetEl.querySelector('#pdfSmartCost').closest('.pdf-card');
+      if (smartCard) {
+        smartCard.style.display = 'none';
+      }
+    }
     setText('pdfIpCost', formatCurrency(ipCost));
 
     // Software selection label
@@ -75,12 +84,37 @@
     billing = String(billing || 'monthly').toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly';
     setText('pdfBilling', billing);
 
-    // Hardware summary
-    setText('pdfTodayLabel', hardware.labels && hardware.labels.todayLabel ? hardware.labels.todayLabel : 'Today');
-    setText('pdfSighthoundLabel', hardware.labels && hardware.labels.sighthoundLabel ? hardware.labels.sighthoundLabel : 'With Sighthound');
+    // Hardware summary: match on-screen semantics for each scenario.
+    if (result.scenario === 'a') {
+      // Scenario A: full smart vs Sighthound comparison.
+      setText(
+        'pdfTodayLabel',
+        hardware.labels && hardware.labels.todayLabel ? hardware.labels.todayLabel : 'Today'
+      );
+      setText(
+        'pdfSighthoundLabel',
+        hardware.labels && hardware.labels.sighthoundLabel
+          ? hardware.labels.sighthoundLabel
+          : 'With Sighthound'
+      );
 
-    setText('pdfTodayTotal', formatCurrency(hardware.todayTotal));
-    setText('pdfSighthoundTotal', formatCurrency(hardware.sighthoundTotal));
+      setText('pdfTodayTotal', formatCurrency(hardware.todayTotal));
+      setText('pdfSighthoundTotal', formatCurrency(hardware.sighthoundTotal));
+    } else if (result.scenario === 'b') {
+      // Scenario B: existing standard IP cameras reused; only nodes are new hardware.
+      setText('pdfTodayLabel', 'Existing camera hardware');
+      setText('pdfSighthoundLabel', 'Upfront node cost');
+
+      setText('pdfTodayTotal', 'Already installed');
+      setText('pdfSighthoundTotal', formatCurrency(hardware.sighthoundTotal));
+    } else {
+      // Scenario C: new deployment; no existing cameras.
+      setText('pdfTodayLabel', 'No current cameras (new deployment)');
+      setText('pdfSighthoundLabel', 'New deployment hardware cost (nodes + cameras)');
+
+      setText('pdfTodayTotal', '—');
+      setText('pdfSighthoundTotal', formatCurrency(hardware.sighthoundTotal));
+    }
 
     // Savings card (Scenario A only)
     var savingsSection = targetEl.querySelector('#pdfSavingsSection');
@@ -100,8 +134,17 @@
 
     // Nodes and cost per camera
     setText('pdfNodes', String(result.nodesNeeded));
-    setText('pdfCostPerCameraBefore', formatCurrency(hardware.costPerCameraBefore));
-    setText('pdfCostPerCameraAfter', formatCurrency(hardware.costPerCameraAfter));
+
+    if (result.scenario === 'a') {
+      // Before/after both meaningful for Scenario A.
+      setText('pdfCostPerCameraBefore', formatCurrency(hardware.costPerCameraBefore));
+      setText('pdfCostPerCameraAfter', formatCurrency(hardware.costPerCameraAfter));
+    } else {
+      // For Scenarios B/C, only surface the "after" Sighthound cost; the smart-camera
+      // baseline is an internal reference and not part of the user-facing comparison.
+      setText('pdfCostPerCameraBefore', '—');
+      setText('pdfCostPerCameraAfter', formatCurrency(hardware.costPerCameraAfter));
+    }
 
     // Software totals
     setText('pdfSoftwareMonthly', formatCurrency(software.monthlyTotal));

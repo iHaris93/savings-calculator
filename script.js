@@ -204,6 +204,17 @@
 
     const result = CalcCore.computeScenarioResults(p);
     const scenario = result.scenario; // 'a' | 'b' | 'c'
+
+    // In Live view, the smart camera cost input and "Current approach" section are
+    // only relevant for Scenario A (smart cameras today). Hide that section for B/C
+    // so we don't imply a smart-camera baseline where it isn't used.
+    if (sectionCurrentApproach) {
+      if (scenario === 'a' && hasValidCameras) {
+        sectionCurrentApproach.classList.remove('hidden');
+      } else {
+        sectionCurrentApproach.classList.add('hidden');
+      }
+    }
     const hardware = result.hardware;
     const software = result.software;
     const breakdown = result.breakdown;
