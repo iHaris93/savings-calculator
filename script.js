@@ -17,6 +17,13 @@
   const totalCamerasInput = document.getElementById('totalCameras');
   const smartCameraCostInput = document.getElementById('smartCameraCost');
   const dumbCameraCostInput = document.getElementById('dumbCameraCost');
+  // Optional explicit node configuration (Auto/Manual + count)
+  const liveNodesInput = document.getElementById('liveNodes');
+  const liveNodesAutoBtn = document.getElementById('liveNodesAuto');
+  const liveNodesManualBtn = document.getElementById('liveNodesManual');
+  const liveNodesHelper = document.getElementById('liveNodesHelper');
+  const nodesConfigHelper = document.getElementById('nodesConfigHelper');
+
   const existingCamerasToggle = document.getElementById('existingCamerasToggle'); // "Yes" option
   const existingCamerasToggleNo = document.getElementById('existingCamerasToggleNo'); // "No" option
   const smartCamerasToggle = document.getElementById('smartCamerasToggle'); // "Yes" option
@@ -26,6 +33,12 @@
   const softwareLprCheckbox = document.getElementById('softwareLpr');
   const softwareMmcgCheckbox = document.getElementById('softwareMmcg');
   const softwareBillingFrequencySelect = document.getElementById('softwareBillingFrequency');
+
+  // Optional current provider TCO inputs (Step 4-style)
+  const currentSoftwareInput = document.getElementById('liveCurrentSoftware');
+  const currentHardwareInput = document.getElementById('liveCurrentHardware');
+  const currentBillingMonthlyBtn = document.getElementById('liveCurrentBillingMonthly');
+  const currentBillingYearlyBtn = document.getElementById('liveCurrentBillingYearly');
 
   // Sections
   const sectionCurrentApproach = document.getElementById('sectionCurrentApproach');
@@ -79,11 +92,23 @@
   const softwareRecurringSummary = document.getElementById('softwareRecurringSummary');
   const softwareBillingNote = document.getElementById('softwareBillingNote');
 
+  // Live TCO comparison results (optional Step 4 view)
+  const tcoSectionEl = document.getElementById('liveTcoSection');
+  const currentTcoValueEl = document.getElementById('liveCurrentTcoValue');
+  const sighthoundTcoValueEl = document.getElementById('liveSighthoundTcoValue');
+  const tcoSummaryEl = document.getElementById('liveTcoSummary');
+
   // Misc
   const downloadPdfButton = document.getElementById('downloadPdfButton');
   const helperToggleButtons = document.querySelectorAll('[data-helper-target]');
 
   const DEFAULTS = Params.DEFAULTS || {};
+
+  // Fixed horizon in months for current provider TCO comparison. If future designs
+  // require a different window (e.g., 24 months), update this constant and any
+  // associated copy in the UI and PDF.
+  const TCO_HORIZON_MONTHS = 12;
+  let currentBilling = 'monthly';
 
   function assertUrlParityGuard(state) {
     if (!state || !Params || typeof Params.assertCanonicalRoundTrip !== 'function') {
@@ -135,6 +160,73 @@
     if (dumbCameraCostInput) {
       dumbCameraCostInput.value = typeof p.ipCost === 'number' ? p.ipCost : DEFAULTS.ipCost;
     }
+
+    // Compute Nodes: recommended vs manual override
+    const camerasForNodes = p.cameras || 0;
+    const recommendedNodes = CalcCore.calculateNodesNeeded
+      ? CalcCore.calculateNodesNeeded(camerasForNodes)
+      : 0;
+    const nodesMode = p.nodesMode === 'manual' ? 'manual' : 'auto';
+    const configuredNodes = typeof p.nodes === 'number' ? p.nodes : 0;
+
+    if (liveNodesAutoBtn) {
+      const active = nodesMode === 'auto';
+      liveNodesAutoBtn.classList.toggle('bg-white', active);
+      liveNodesAutoBtn.classList.toggle('border', active);
+      liveNodesAutoBtn.classList.toggle('border-slate-200', active);
+      liveNodesAutoBtn.classList.toggle('text-slate-800', active);
+    }
+    if (liveNodesManualBtn) {
+      const active = nodesMode === 'manual';
+      liveNodesManualBtn.classList.toggle('bg-white', active);
+      liveNodesManualBtn.classList.toggle('border', active);
+      liveNodesManualBtn.classList.toggle('border-slate-200', active);
+      liveNodesManualBtn.classList.toggle('text-slate-800', active);
+    }
+
+    if (liveNodesInput) {
+      const isAuto = nodesMode === 'auto';
+      liveNodesInput.disabled = isAuto;
+      if (isAuto) {
+        liveNodesInput.value = recommendedNodes > 0 ? String(recommendedNodes) : '';
+      } else {
+        // Allow explicit 0 to represent a nodes-only or camera-only scenario.
+        liveNodesInput.value = configuredNodes > 0 ? String(configuredNodes) : '0';
+      }
+    }
+
+    if (liveNodesHelper) {
+      let helperText;
+      if (!camerasForNodes) {
+        helperText =
+          'Enter your camera count, then use Auto to follow our node capacity guidance or switch to Manual to size nodes for phased rollouts or redundancy.';
+      } else if (nodesMode === 'auto') {
+        helperText =
+          'Auto mode: based on ' +
+          camerasForNodes.toLocaleString('en-US') +
+          ' cameras and up to ' +
+          (CalcCore.CAMERAS_PER_NODE || 1) +
+          ' cameras per node, we recommend ' +
+          recommendedNodes.toLocaleString('en-US') +
+          ' Compute Node' + (recommendedNodes === 1 ? '' : 's') + '.';
+      } else {
+        helperText =
+          'Manual mode: using ' +
+          (configuredNodes || 0).toLocaleString('en-US') +
+          ' Compute Node' + ((configuredNodes || 0) === 1 ? '' : 's') + '. ';
+        if (camerasForNodes && recommendedNodes !== configuredNodes) {
+          helperText +=
+            'For ' +
+            camerasForNodes.toLocaleString('en-US') +
+            ' cameras we would typically recommend about ' +
+            recommendedNodes.toLocaleString('en-US') +
+            ' node' + (recommendedNodes === 1 ? '' : 's') +
+            ' based on capacity.';
+        }
+      }
+      liveNodesHelper.textContent = helperText;
+    }
+
     if (existingCamerasToggle) {
       existingCamerasToggle.checked = !!p.hasExistingCameras;
     }
@@ -298,7 +390,11 @@
 
     // Nodes and percent reduction
     if (nodesNeededValue) {
-      nodesNeededValue.textContent = String(result.nodesNeeded);
+      const nodesDisplay =
+        hardware && typeof hardware.nodesForCost === 'number'
+          ? hardware.nodesForCost
+          : result.nodesNeeded;
+      nodesNeededValue.textContent = String(nodesDisplay);
     }
 
     if (percentReductionGroup) {
@@ -392,6 +488,80 @@
     if (softwareBreakdownLine && breakdown.softwareLine) {
       softwareBreakdownLine.textContent = breakdown.softwareLine;
     }
+
+    // Optional TCO comparison against current provider based on Step 4-style inputs.
+    if (
+      tcoSectionEl &&
+      currentTcoValueEl &&
+      sighthoundTcoValueEl &&
+      typeof CalcCore.computeTcoComparison === 'function'
+    ) {
+      const rawSoftware =
+        currentSoftwareInput && currentSoftwareInput.value !== ''
+          ? Number(currentSoftwareInput.value)
+          : 0;
+      const rawHardware =
+        currentHardwareInput && currentHardwareInput.value !== ''
+          ? Number(currentHardwareInput.value)
+          : 0;
+
+      const hasCurrentCosts =
+        (rawSoftware && rawSoftware > 0) || (rawHardware && rawHardware > 0);
+
+      if (!hasCurrentCosts) {
+        tcoSectionEl.classList.add('hidden');
+        if (tcoSummaryEl) {
+          tcoSummaryEl.textContent =
+            'Enter your current software and hardware costs on the left to compare multi-month totals.';
+        }
+      } else {
+        tcoSectionEl.classList.remove('hidden');
+
+        let currentMonthly = 0;
+        if (rawSoftware > 0) {
+          currentMonthly =
+            currentBilling === 'yearly' ? rawSoftware / 12 : rawSoftware;
+        }
+
+        const comparison = CalcCore.computeTcoComparison({
+          currentHardwareUpfront: rawHardware > 0 ? rawHardware : 0,
+          currentMonthlyRecurring: currentMonthly,
+          sighthoundHardwareUpfront: hardware.sighthoundTotal,
+          sighthoundMonthlyRecurring: software.monthlyTotal,
+          horizonMonths: TCO_HORIZON_MONTHS,
+        });
+
+        currentTcoValueEl.textContent = CalcCore.formatCurrency(
+          comparison.currentTotal
+        );
+        sighthoundTcoValueEl.textContent = CalcCore.formatCurrency(
+          comparison.sighthoundTotal
+        );
+
+        if (tcoSummaryEl) {
+          const diff = comparison.diff;
+          if (diff > 0) {
+            tcoSummaryEl.textContent =
+              'Based on your estimates, Sighthound cameras and nodes have a lower total cost of ownership of ' +
+              CalcCore.formatCurrency(diff) +
+              ' over ' +
+              comparison.months +
+              ' months compared to your current provider.';
+          } else if (diff < 0) {
+            const worse = CalcCore.formatCurrency(Math.abs(diff));
+            tcoSummaryEl.textContent =
+              'For Sighthound to be net savings on total cost of ownership, it must unlock at least ' +
+              worse +
+              ' in additional value over ' +
+              comparison.months +
+              ' months relative to your current provider.';
+          } else {
+            tcoSummaryEl.textContent =
+              'Based on your estimates, Sighthound and your current provider have similar total cost over this period. Architecture and capability differences may still be material.';
+          }
+        }
+      }
+    }
   }
 
   // Helper toggles
@@ -428,6 +598,8 @@
         cameras: base.cameras || 0,
         hasExistingCameras: base.hasExistingCameras || 0,
         hasSmartCameras: base.hasSmartCameras || 0,
+        nodes: base.nodes || 0,
+        nodesMode: base.nodesMode || 'auto',
         smartCost: base.smartCost || 3000,
         ipCost: base.ipCost || 250,
         software: base.software || 'both',
@@ -523,6 +695,39 @@
     dumbCameraCostInput.addEventListener('change', handler);
   }
 
+  // Live Compute Node configuration
+  if (liveNodesAutoBtn) {
+    liveNodesAutoBtn.addEventListener('click', () => {
+      // Revert to using the recommended node count from camera capacity.
+      state.update({ nodesMode: 'auto' });
+    });
+  }
+
+  if (liveNodesManualBtn) {
+    liveNodesManualBtn.addEventListener('click', () => {
+      const current = state.getParams();
+      const cams = current.cameras || 0;
+      const recommended = CalcCore.calculateNodesNeeded
+        ? CalcCore.calculateNodesNeeded(cams)
+        : 0;
+      const nextNodes =
+        typeof current.nodes === 'number' ? current.nodes : recommended;
+      state.update({ nodesMode: 'manual', nodes: nextNodes });
+    });
+  }
+
+  if (liveNodesInput) {
+    const onChangeNodes = () => {
+      let value = Number(liveNodesInput.value);
+      if (!Number.isFinite(value) || value < 0) {
+        value = 0;
+      }
+      state.update({ nodesMode: 'manual', nodes: value });
+    };
+    liveNodesInput.addEventListener('input', onChangeNodes);
+    liveNodesInput.addEventListener('change', onChangeNodes);
+  }
+
   function deriveSoftwareSelectionFromCheckboxes() {
     const lpr = softwareLprCheckbox && softwareLprCheckbox.checked;
     const mmcg = softwareMmcgCheckbox && softwareMmcgCheckbox.checked;
@@ -548,6 +753,66 @@
     softwareBillingFrequencySelect.addEventListener('change', () => {
       state.update({ billing: softwareBillingFrequencySelect.value });
     });
+  }
+
+  // Current provider billing toggle is local-only (not stored in canonical params).
+  if (currentBillingMonthlyBtn) {
+    currentBillingMonthlyBtn.addEventListener('click', () => {
+      currentBilling = 'monthly';
+      currentBillingMonthlyBtn.classList.add(
+        'bg-white',
+        'border',
+        'border-slate-200',
+        'text-slate-800'
+      );
+      if (currentBillingYearlyBtn) {
+        currentBillingYearlyBtn.classList.remove(
+          'bg-white',
+          'border',
+          'border-slate-200',
+          'text-slate-800'
+        );
+      }
+      // Re-render with updated interpretation of current software total.
+      render(state.getParams());
+    });
+  }
+  if (currentBillingYearlyBtn) {
+    currentBillingYearlyBtn.addEventListener('click', () => {
+      currentBilling = 'yearly';
+      currentBillingYearlyBtn.classList.add(
+        'bg-white',
+        'border',
+        'border-slate-200',
+        'text-slate-800'
+      );
+      if (currentBillingMonthlyBtn) {
+        currentBillingMonthlyBtn.classList.remove(
+          'bg-white',
+          'border',
+          'border-slate-200',
+          'text-slate-800'
+        );
+      }
+      render(state.getParams());
+    });
+  }
+
+  // Changes to current provider cost inputs should trigger an immediate re-render
+  // using the existing canonical state.
+  if (currentSoftwareInput) {
+    const handler = () => {
+      render(state.getParams());
+    };
+    currentSoftwareInput.addEventListener('input', handler);
+    currentSoftwareInput.addEventListener('change', handler);
+  }
+  if (currentHardwareInput) {
+    const handler = () => {
+      render(state.getParams());
+    };
+    currentHardwareInput.addEventListener('input', handler);
+    currentHardwareInput.addEventListener('change', handler);
   }
 
   // Subscribe to state changes and render

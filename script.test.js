@@ -10,6 +10,7 @@ const {
   deriveScenario,
   getSoftwareMonthlyPricePerCamera,
   computeScenarioResults,
+  computeTcoComparison,
 } = core;
 
 const baseParams = {
@@ -94,7 +95,7 @@ test('computeScenarioResults scenario A matches expected hardware totals', () =>
 
 // 5. Scenario B: existing standard IP cameras (nodes-only upfront)
 
-test('computeScenarioResults scenario B nodes-only hardware behaves as expected', () => {
+test('computeScenarioResults scenario B uses same Sighthound hardware math as scenario A', () => {
   const params = {
     ...baseParams,
     cameras: 12,
@@ -113,8 +114,8 @@ test('computeScenarioResults scenario B nodes-only hardware behaves as expected'
   assert.equal(cameras, 12);
 
   const expectedNodes = Math.ceil(12 / CAMERAS_PER_NODE);
-  const expectedTodayTotal = 12 * 3000; // smart cameras baseline (unchanged from legacy math)
-  const expectedSighthound = expectedNodes * NODE_COST; // nodes only
+  const expectedTodayTotal = 12 * 3000; // smart cameras baseline
+  const expectedSighthound = expectedNodes * NODE_COST + 12 * 250; // same as scenario A with standard IP
 
   assert.equal(nodesNeeded, expectedNodes);
   assert.equal(hardware.todayTotal, expectedTodayTotal);
@@ -179,4 +180,80 @@ test('computeScenarioResults software section respects selection and billing', (
   assert.equal(noneResult.software.monthlyPerCamera, 0);
   assert.equal(noneResult.software.monthlyTotal, 0);
   assert.equal(noneResult.software.yearlyTotal, 0);
+});
+
+test('computeTcoComparison calculates totals and deltas over the horizon', () => {
+  const result = computeTcoComparison({
+    currentHardwareUpfront: 10000,
+    currentMonthlyRecurring: 2000,
+    sighthoundHardwareUpfront: 8000,
+    sighthoundMonthlyRecurring: 1500,
+    horizonMonths: 12,
+  });
+
+  const expectedCurrent = 10000 + 2000 * 12;
+  const expectedSighthound = 8000 + 1500 * 12;
+  const expectedDiff = expectedCurrent - expectedSighthound;
+
+  assert.equal(result.months, 12);
+  assert.equal(result.currentTotal, expectedCurrent);
+  assert.equal(result.sighthoundTotal, expectedSighthound);
+  assert.equal(result.diff, expectedDiff);
+  assert.equal(result.monthlyDiff, expectedDiff / 12);
+  assert.equal(result.hardwareDiff, 10000 - 8000);
+});
+
+// 8. Optional nodes: manual override vs auto recommendation
+
+test('manual nodes override recommended nodes in hardware totals (Scenario A)', () => {
+  const params = {
+    ...baseParams,
+    cameras: 16,
+    hasSmartCameras: 1,
+    hasExistingCameras: 0,
+    smartCost: 3000,
+    ipCost: 250,
+    software: 'both',
+    billing: 'monthly',
+    nodesMode: 'manual',
+    nodes: 10,
+  };
+
+  const result = computeScenarioResults(params);
+  const { scenario, cameras, nodesNeeded, hardware } = result;
+
+  assert.equal(scenario, 'a');
+  assert.equal(cameras, 16);
+
+  const expectedRecommendedNodes = Math.ceil(16 / CAMERAS_PER_NODE);
+  const expectedSighthound = 10 * NODE_COST + 16 * 250;
+
+  assert.equal(nodesNeeded, expectedRecommendedNodes);
+  assert.equal(hardware.sighthoundTotal, expectedSighthound);
+});
+
+
+test('auto mode ignores stray nodes override and uses recommended count', () => {
+  const params = {
+    ...baseParams,
+    cameras: 12,
+    hasSmartCameras: 1,
+    hasExistingCameras: 0,
+    smartCost: 3000,
+    ipCost: 250,
+    software: 'both',
+    billing: 'monthly',
+    nodesMode: 'auto',
+    // Stray manual value that should not affect hardware costs while in auto mode
+    nodes: 1,
+  };
+
+  const result = computeScenarioResults(params);
+  const { nodesNeeded, hardware } = result;
+
+  const expectedNodes = Math.ceil(12 / CAMERAS_PER_NODE);
+  const expectedSighthound = expectedNodes * NODE_COST + 12 * 250;
+
+  assert.equal(nodesNeeded, expectedNodes);
+  assert.equal(hardware.sighthoundTotal, expectedSighthound);
 });

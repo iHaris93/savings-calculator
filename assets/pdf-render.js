@@ -150,6 +150,90 @@
     setText('pdfSoftwareMonthly', formatCurrency(software.monthlyTotal));
     setText('pdfSoftwareYearly', formatCurrency(software.yearlyTotal));
 
+    // Optional TCO summary vs current provider, based on the same TCO helper
+    // used in Guided and Live modes. We read the current provider fields
+    // directly from the live DOM so they remain view-local and are not part
+    // of canonical URL state.
+    (function () {
+      if (typeof document === 'undefined' || !CalcCore || typeof CalcCore.computeTcoComparison !== 'function') {
+        return;
+      }
+
+      var currentSoftwareEl =
+        document.getElementById('guidedCurrentSoftware') ||
+        document.getElementById('liveCurrentSoftware');
+      var currentHardwareEl =
+        document.getElementById('guidedCurrentHardware') ||
+        document.getElementById('liveCurrentHardware');
+      var currentMonthlyBtn =
+        document.getElementById('guidedCurrentBillingMonthly') ||
+        document.getElementById('liveCurrentBillingMonthly');
+      var currentYearlyBtn =
+        document.getElementById('guidedCurrentBillingYearly') ||
+        document.getElementById('liveCurrentBillingYearly');
+
+      if (!currentSoftwareEl && !currentHardwareEl) {
+        return;
+      }
+
+      var rawSoftware = currentSoftwareEl && currentSoftwareEl.value !== ''
+        ? Number(currentSoftwareEl.value)
+        : 0;
+      var rawHardware = currentHardwareEl && currentHardwareEl.value !== ''
+        ? Number(currentHardwareEl.value)
+        : 0;
+
+      var hasCurrentCosts = (rawSoftware && rawSoftware > 0) || (rawHardware && rawHardware > 0);
+      if (!hasCurrentCosts) {
+        setText('pdfTcoSummary', '');
+        return;
+      }
+
+      var billingMode = 'monthly';
+      if (currentYearlyBtn && currentYearlyBtn.classList.contains('bg-white')) {
+        billingMode = 'yearly';
+      } else if (currentMonthlyBtn && currentMonthlyBtn.classList.contains('bg-white')) {
+        billingMode = 'monthly';
+      }
+
+      var currentMonthly = 0;
+      if (rawSoftware > 0) {
+        currentMonthly = billingMode === 'yearly' ? rawSoftware / 12 : rawSoftware;
+      }
+
+      var comparison = CalcCore.computeTcoComparison({
+        currentHardwareUpfront: rawHardware > 0 ? rawHardware : 0,
+        currentMonthlyRecurring: currentMonthly,
+        sighthoundHardwareUpfront: hardware.sighthoundTotal,
+        sighthoundMonthlyRecurring: software.monthlyTotal,
+        horizonMonths: 12,
+      });
+
+      var diff = comparison.diff;
+      var summary;
+      if (diff > 0) {
+        summary =
+          'Based on your estimates, Sighthound has approximately ' +
+          formatCurrency(diff) +
+          ' lower total cost of ownership over ' +
+          comparison.months +
+          ' months than your current provider.';
+      } else if (diff < 0) {
+        var worse = formatCurrency(Math.abs(diff));
+        summary =
+          'For Sighthound to be net savings on total cost of ownership, it must unlock at least ' +
+          worse +
+          ' in additional value over ' +
+          comparison.months +
+          ' months relative to your current provider.';
+      } else {
+        summary =
+          'Based on your estimates, Sighthound and your current provider have similar total cost over this period. Architecture and capability differences may still be material.';
+      }
+
+      setText('pdfTcoSummary', summary);
+    })();
+
     // Breakdown lines
     setText('pdfTodayBreakdown', breakdown.todayLine || '');
     setText('pdfNodesBreakdown', breakdown.nodesLine || '');

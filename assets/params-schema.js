@@ -12,6 +12,18 @@
     cameras: 0,
     hasExistingCameras: 0,
     hasSmartCameras: 0,
+    // Optional explicit node count. When 0 and nodesMode === 'auto', nodes are
+    // derived from camera count via the fixed CAMERAS_PER_NODE rule.
+    nodes: 0,
+    // nodesMode controls whether hardware costs use the recommended node count
+    // from camera capacity ("auto") or an explicit override from `nodes`
+    // ("manual"). Guided and Live now default to manual nodes so users
+    // explicitly choose when to add Compute Nodes.
+    nodesMode: 'manual',
+    // Camera hardware preference used for Sighthound math in the guided flow.
+    // "standard" -> standard IP cameras at ipCost, "smart" -> Sighthound
+    // Smart cameras at smartCost.
+    cameraType: 'standard',
     smartCost: 3000,
     ipCost: 250,
     software: 'none',
@@ -24,6 +36,9 @@
     'cameras',
     'hasExistingCameras',
     'hasSmartCameras',
+    'nodes',
+    'nodesMode',
+    'cameraType',
     'smartCost',
     'ipCost',
     'software',
@@ -85,6 +100,19 @@
 
     normalized.cameras = toInt(src.cameras, DEFAULTS.cameras, 0, 10000);
 
+    // Optional explicit node count. When nodesMode is 'auto', this value is
+    // ignored for cost calculations but preserved for URL round-tripping.
+    normalized.nodes = toInt(src.nodes, DEFAULTS.nodes, 0, 10000);
+
+    // nodesMode: "manual" only when explicitly requested; otherwise default to
+    // "auto" so existing URLs remain compatible.
+    var nodesModeRaw = (src.nodesMode || DEFAULTS.nodesMode).toString().toLowerCase();
+    normalized.nodesMode = nodesModeRaw === 'manual' ? 'manual' : 'auto';
+
+    // Camera hardware preference for Sighthound path.
+    var cameraTypeRaw = (src.cameraType || DEFAULTS.cameraType).toString().toLowerCase();
+    normalized.cameraType = cameraTypeRaw === 'smart' ? 'smart' : 'standard';
+
     normalized.hasExistingCameras = toFlag(
       src.hasExistingCameras,
       DEFAULTS.hasExistingCameras
@@ -128,6 +156,22 @@
 
       if (key === 'cameras') {
         if (value > 0) sp.set(key, String(value));
+        return;
+      }
+
+      if (key === 'nodes') {
+        // Only persist a node count when it is non-zero so URLs remain compact.
+        // The nodesMode flag distinguishes auto vs manual behavior, including
+        // the edge case of a manual 0-node configuration.
+        if (value > 0) sp.set(key, String(value));
+        return;
+      }
+
+      if (key === 'nodesMode') {
+        // Only persist non-default modes.
+        if (value && value !== DEFAULTS.nodesMode) {
+          sp.set(key, String(value));
+        }
         return;
       }
 

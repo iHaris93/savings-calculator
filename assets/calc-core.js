@@ -79,8 +79,26 @@
     const ipCost = toNonNegativeNumber(params.ipCost, 250);
     const scenario = deriveScenario(params);
 
+    // Camera hardware preference for the Sighthound path.
+    const cameraTypeRaw = params && typeof params.cameraType === 'string'
+      ? params.cameraType.toLowerCase()
+      : '';
+    const cameraType = cameraTypeRaw === 'smart' ? 'smart' : 'standard';
+
+    // Recommended node count strictly from camera capacity.
     const nodesNeeded = calculateNodesNeeded(cameras);
-    const nodesHardwareTotal = nodesNeeded * NODE_COST;
+
+    // Optional explicit node configuration from params. When nodesMode is
+    // "manual", hardware costs use this configured value; otherwise they use
+    // the recommended count above.
+    const nodesConfigured = toNonNegativeInt(params.nodes);
+    const nodesModeRaw = params && typeof params.nodesMode === 'string'
+      ? params.nodesMode.toLowerCase()
+      : '';
+    const nodesMode = nodesModeRaw === 'manual' ? 'manual' : 'auto';
+    const nodesForCost = nodesMode === 'manual' ? nodesConfigured : nodesNeeded;
+
+    const nodesHardwareTotal = nodesForCost * NODE_COST;
 
     // Match existing Live implementation math:
     // - "Today" total is always smart cameras today: cameras * smartCost
@@ -88,18 +106,14 @@
     let todayTotal = cameras * smartCost;
     let sighthoundCameraHardwareTotal = 0;
 
-    if (scenario === 'a') {
-      // Scenario A: smart cameras today vs Sighthound (nodes + IP cameras)
-      sighthoundCameraHardwareTotal = cameras * ipCost;
-    } else if (scenario === 'b') {
-      // Scenario B: existing standard IP cameras reused; only nodes are new hardware.
-      // Camera hardware is considered already installed (no new camera hardware cost).
-      sighthoundCameraHardwareTotal = 0;
-    } else {
-      // Scenario C: new deployment (nodes + IP cameras). Baseline todayTotal is still
-      // smart cameras today for internal calculations, but UI hides direct comparison.
-      sighthoundCameraHardwareTotal = cameras * ipCost;
-    }
+    // Camera unit cost used on the Sighthound side, based on cameraType.
+    const sighthoundCameraUnitCost = cameraType === 'smart' ? smartCost : ipCost;
+
+    // For all scenarios, the Sighthound path uses the selected camera type
+    // (standard IP or smart) plus optional Compute Nodes. Scenario A still
+    // compares against an "existing smart cameras" baseline, while B and C
+    // reuse their own labels but share the same Sighthound hardware math.
+    sighthoundCameraHardwareTotal = cameras * sighthoundCameraUnitCost;
 
     const sighthoundTotal = nodesHardwareTotal + sighthoundCameraHardwareTotal;
 
@@ -123,8 +137,8 @@
     let deploymentIntro;
 
     if (scenario === 'a') {
-      todayLabel = 'Today \u2013 smart AI cameras';
-      sighthoundLabel = 'With Sighthound Compute Hardware';
+      todayLabel = 'Existing smart cameras';
+      sighthoundLabel = 'With Sighthound hardware';
       primaryLabel = savings >= 0 ? 'Savings vs today' : 'Extra cost vs today';
       costPerCameraLabel = 'Cost per camera (hardware only)';
       deploymentIntro =
@@ -156,7 +170,16 @@
     return {
       scenario,
       cameras,
+      // nodesNeeded is the recommended count based purely on camera capacity
+      // and is used for capacity/"Nodes required" displays.
       nodesNeeded,
+      // nodesConfigured and nodesMode describe the override state coming from
+      // the UI/canonical params.
+      nodesConfigured,
+      nodesMode,
+      // nodesForCost is the actual node quantity used when computing hardware
+      // totals and breakdown lines.
+      nodesForCost,
       todayTotal,
       sighthoundTotal,
       savings,
@@ -243,23 +266,42 @@
     })();
 
     const nodesLine = (function () {
-      const nodes = hardware.nodesNeeded;
-      return (
+      const nodesForCost =
+        typeof hardware.nodesForCost === 'number'
+          ? hardware.nodesForCost
+          : hardware.nodesNeeded;
+      const base =
         'Compute Nodes: ' +
-        nodes.toLocaleString('en-US') +
+        nodesForCost.toLocaleString('en-US') +
         ' x ' +
         formatCurrency(NODE_COST) +
         ' = ' +
-        formatCurrency(nodes * NODE_COST)
-      );
+        formatCurrency(nodesForCost * NODE_COST);
+
+      // When a manual override is in effect and it differs from the
+      // recommendation, include a short note so users can see both values in
+      // the breakdown and PDF.
+      if (
+        hardware.nodesMode === 'manual' &&
+        typeof hardware.nodesConfigured === 'number' &&
+        typeof hardware.nodesNeeded === 'number' &&
+        hardware.nodesConfigured !== hardware.nodesNeeded &&
+        hardware.cameras > 0
+      ) {
+        return (
+          base +
+          ' (recommended: ' +
+          hardware.nodesNeeded.toLocaleString('en-US') +
+          ' based on camera count)'
+        );
+      }
+
+      return base;
     })();
 
     const camerasLine = (function () {
       const cams = hardware.cameras;
       const ipCost = toNonNegativeNumber(normalized.ipCost, 250);
-      if (hardware.scenario === 'b') {
-        return 'Reusing existing cameras: ' + formatCurrency(0);
-      }
       const subtotal = cams * ipCost;
       return (
         'Standard IP cameras: ' +
@@ -305,6 +347,49 @@
     };
   }
 
+  function computeTcoComparison(input) {
+    const src = input || {};
+    const monthsRaw = src.horizonMonths;
+    const months = monthsRaw && monthsRaw > 0 ? Math.floor(monthsRaw) : 12;
+
+    const currentHardwareUpfront = toNonNegativeNumber(
+      src.currentHardwareUpfront,
+      0,
+      0
+    );
+    const sighthoundHardwareUpfront = toNonNegativeNumber(
+      src.sighthoundHardwareUpfront,
+      0,
+      0
+    );
+    const currentMonthlyRecurring = toNonNegativeNumber(
+      src.currentMonthlyRecurring,
+      0,
+      0
+    );
+    const sighthoundMonthlyRecurring = toNonNegativeNumber(
+      src.sighthoundMonthlyRecurring,
+      0,
+      0
+    );
+
+    const currentTotal = currentHardwareUpfront + currentMonthlyRecurring * months;
+    const sighthoundTotal =
+      sighthoundHardwareUpfront + sighthoundMonthlyRecurring * months;
+    const diff = currentTotal - sighthoundTotal;
+    const monthlyDiff = months > 0 ? diff / months : 0;
+    const hardwareDiff = currentHardwareUpfront - sighthoundHardwareUpfront;
+
+    return {
+      months,
+      currentTotal,
+      sighthoundTotal,
+      diff,
+      monthlyDiff,
+      hardwareDiff,
+    };
+  }
+
   return {
     CAMERAS_PER_NODE,
     NODE_COST,
@@ -312,6 +397,7 @@
     calculateNodesNeeded,
     deriveScenario,
     computeScenarioResults,
+    computeTcoComparison,
     formatCurrency,
     formatPercent,
   };
