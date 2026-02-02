@@ -17,6 +17,39 @@
     );
   }
 
+  // Shared helper: broadcast the current estimator URL to the parent window.
+  // This is intentionally generic and does not know about HubSpot or any
+  // specific parent implementation. The parent page can listen for
+  // HARDWARE_ESTIMATE_URL messages and decide what to do with them.
+  function broadcastHardwareEstimateUrl() {
+    if (typeof window === 'undefined') return;
+    try {
+      var loc = window.location;
+      if (!loc || !loc.href) return;
+      // Only attempt cross-window messaging when embedded in another context.
+      if (!window.parent || window.parent === window) return;
+      window.parent.postMessage(
+        {
+          type: 'HARDWARE_ESTIMATE_URL',
+          url: loc.href,
+        },
+        '*'
+      );
+    } catch (_err) {
+      // Silent fail; URL broadcast is a UX enhancement only.
+    }
+  }
+
+  // Expose the helper on window so other modules (if any) can call it
+  // directly if needed.
+  if (typeof window !== 'undefined') {
+    try {
+      window.broadcastHardwareEstimateUrl = broadcastHardwareEstimateUrl;
+    } catch (_err) {
+      // Never throw from best-effort globals.
+    }
+  }
+
   function getParamsModule() {
     if (typeof window !== 'undefined' && window.SighthoundParams) {
       return window.SighthoundParams;
@@ -84,6 +117,17 @@
           const newUrl =
             loc.pathname + (searchString ? '?' + searchString : '') + loc.hash;
           window.history.replaceState({}, '', newUrl);
+
+          // After the canonical URL has been updated, broadcast it to the
+          // parent page (e.g., a HubSpot/Squarespace container) so it can
+          // capture the latest estimator URL including query params.
+          if (typeof window !== 'undefined' && typeof window.broadcastHardwareEstimateUrl === 'function') {
+            try {
+              window.broadcastHardwareEstimateUrl();
+            } catch (_err2) {
+              // Never throw from cross-window messaging.
+            }
+          }
         } catch (_err) {
           // URL state is a UX enhancement only; fail silently.
         }
