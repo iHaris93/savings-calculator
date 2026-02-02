@@ -654,6 +654,18 @@
                   <p class="text-[11px] text-slate-500">
                     Print-to-PDF includes this summary, your inputs, and key assumptions.
                   </p>
+
+                  <!-- TEMP: debug field showing the canonical estimator URL (for live debugging only) -->
+                  <div class="mt-2 text-[11px] text-slate-500">
+                    <span class="font-semibold">Debug – estimator URL:</span>
+                    <input
+                      id="guidedEstimatorUrlDebug"
+                      type="text"
+                      readonly
+                      class="mt-1 block w-full max-w-xl rounded border border-dashed border-slate-300 bg-white px-2 py-1 font-mono text-[11px] text-slate-700"
+                      value="(waiting for URL)"
+                    />
+                  </div>
                 </section>
               </div>
             </section>
@@ -825,5 +837,29 @@
     <script src="assets/pdf-render.js"></script>
     <script src="assets/mode-switch.js"></script>
     <script src="assets/guided.js"></script>
+    <script>
+      // TEMP: keep the guided mode debug URL field in sync with the canonical URL.
+      (function () {
+        function updateGuidedDebugUrl() {
+          try {
+            var debugInput = document.getElementById('guidedEstimatorUrlDebug');
+            if (!debugInput || !window.location || !window.location.href) return;
+            debugInput.value = window.location.href;
+          } catch (_err) {
+            // Debug helper only; never throw.
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            updateGuidedDebugUrl();
+            setInterval(updateGuidedDebugUrl, 500);
+          });
+        } else {
+          updateGuidedDebugUrl();
+          setInterval(updateGuidedDebugUrl, 500);
+        }
+      })();
+    </script>
   </body>
 </html>

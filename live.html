@@ -821,6 +821,18 @@
                   <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                     Hardware is one-time. Software is recurring and shown separately above.
                   </p>
+
+                  <!-- TEMP: debug field showing the canonical estimator URL (for live debugging only) -->
+                  <div class="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span class="font-semibold">Debug – estimator URL:</span>
+                    <input
+                      id="liveEstimatorUrlDebug"
+                      type="text"
+                      readonly
+                      class="mt-1 block w-full max-w-xl rounded border border-dashed border-slate-300 bg-white px-2 py-1 font-mono text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                      value="(waiting for URL)"
+                    />
+                  </div>
                 </aside>
               </div>
             </section>
@@ -986,5 +998,29 @@
     <script src="assets/pdf-render.js"></script>
     <script src="assets/mode-switch.js"></script>
     <script src="script.js"></script>
+    <script>
+      // TEMP: keep the live mode debug URL field in sync with the canonical URL.
+      (function () {
+        function updateLiveDebugUrl() {
+          try {
+            var debugInput = document.getElementById('liveEstimatorUrlDebug');
+            if (!debugInput || !window.location || !window.location.href) return;
+            debugInput.value = window.location.href;
+          } catch (_err) {
+            // Debug helper only; never throw.
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            updateLiveDebugUrl();
+            setInterval(updateLiveDebugUrl, 500);
+          });
+        } else {
+          updateLiveDebugUrl();
+          setInterval(updateLiveDebugUrl, 500);
+        }
+      })();
+    </script>
   </body>
 </html>
