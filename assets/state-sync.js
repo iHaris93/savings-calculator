@@ -1,3 +1,22 @@
+// Global broadcaster (no dependencies)
+// Exposed on window so any page (Guided or Live) can call it without
+// coupling to HubSpot or other parent logic.
+(function () {
+  if (typeof window === 'undefined') return;
+  window.broadcastHardwareEstimateUrl = function () {
+    try {
+      if (window.parent && window.parent !== window && window.location && window.location.href) {
+        window.parent.postMessage(
+          { type: 'HARDWARE_ESTIMATE_URL', url: window.location.href },
+          '*'
+        );
+      }
+    } catch (_) {
+      // Best-effort only; never throw from cross-window messaging.
+    }
+  };
+})();
+
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
@@ -15,39 +34,6 @@
       typeof window.history.replaceState === 'function' &&
       window.location
     );
-  }
-
-  // Shared helper: broadcast the current estimator URL to the parent window.
-  // This is intentionally generic and does not know about HubSpot or any
-  // specific parent implementation. The parent page can listen for
-  // HARDWARE_ESTIMATE_URL messages and decide what to do with them.
-  function broadcastHardwareEstimateUrl() {
-    if (typeof window === 'undefined') return;
-    try {
-      var loc = window.location;
-      if (!loc || !loc.href) return;
-      // Only attempt cross-window messaging when embedded in another context.
-      if (!window.parent || window.parent === window) return;
-      window.parent.postMessage(
-        {
-          type: 'HARDWARE_ESTIMATE_URL',
-          url: loc.href,
-        },
-        '*'
-      );
-    } catch (_err) {
-      // Silent fail; URL broadcast is a UX enhancement only.
-    }
-  }
-
-  // Expose the helper on window so other modules (if any) can call it
-  // directly if needed.
-  if (typeof window !== 'undefined') {
-    try {
-      window.broadcastHardwareEstimateUrl = broadcastHardwareEstimateUrl;
-    } catch (_err) {
-      // Never throw from best-effort globals.
-    }
   }
 
   function getParamsModule() {
@@ -86,6 +72,13 @@
     const raw = Params.readParamsFromUrl(search);
     let params = Params.normalizeParams(raw);
 
+    // Immediately broadcast the current estimator URL once on init so that a
+    // parent page embedding this calculator (e.g., via iframe) can capture an
+    // initial value even before the user interacts.
+    if (typeof window !== 'undefined' && window.broadcastHardwareEstimateUrl) {
+      window.broadcastHardwareEstimateUrl();
+    }
+
     const subscribers = new Set();
     let replaceTimer = null;
 
@@ -121,12 +114,8 @@
           // After the canonical URL has been updated, broadcast it to the
           // parent page (e.g., a HubSpot/Squarespace container) so it can
           // capture the latest estimator URL including query params.
-          if (typeof window !== 'undefined' && typeof window.broadcastHardwareEstimateUrl === 'function') {
-            try {
-              window.broadcastHardwareEstimateUrl();
-            } catch (_err2) {
-              // Never throw from cross-window messaging.
-            }
+          if (typeof window !== 'undefined' && window.broadcastHardwareEstimateUrl) {
+            window.broadcastHardwareEstimateUrl();
           }
         } catch (_err) {
           // URL state is a UX enhancement only; fail silently.
