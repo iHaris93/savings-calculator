@@ -100,6 +100,23 @@
   }
 
   /**
+   * Hide the estimate URL field wrapper via JS (more reliable than CSS guessing).
+   */
+  function hideEstimateUrlField(inputEl) {
+    if (!inputEl) return;
+    var row =
+      inputEl.closest('.hs-form-field') ||
+      inputEl.closest('.hs-form__field') ||
+      inputEl.closest('.field') ||
+      inputEl.parentElement;
+    if (row && row.style) {
+      row.style.position = 'absolute';
+      row.style.left = '-9999px';
+      log('hideEstimateUrlField: hidden wrapper', row.className || row.tagName);
+    }
+  }
+
+  /**
    * Set the field value with maximum persistence.
    */
   function setFieldValue(container) {
@@ -115,6 +132,8 @@
     }
     var ok = hardSetField(f, v);
     log('setFieldValue:', ok ? 'SUCCESS' : 'FAIL', f.name, '=', v);
+    // Hide the field wrapper once we find it
+    hideEstimateUrlField(f);
     return ok;
   }
 
