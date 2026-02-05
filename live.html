@@ -904,6 +904,27 @@
                       value="(waiting for URL)"
                     />
                   </div>
+
+                  <!-- HubSpot Debug (shown when Email PDF copy is clicked) -->
+                  <div
+                    id="hsDebugSection"
+                    class="hidden mt-3 p-3 rounded-lg border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600"
+                  >
+                    <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-2">
+                      HubSpot Debug – Estimator URL Injection:
+                    </p>
+                    <div class="space-y-1 font-mono text-[10px] text-slate-700 dark:text-slate-300">
+                      <div><span class="text-amber-600 dark:text-amber-400">latestEstimatorUrl:</span> <span id="hsDebugUrl">(none)</span></div>
+                      <div><span class="text-amber-600 dark:text-amber-400">hsEmailWrap visible:</span> <span id="hsDebugVisible">(unknown)</span></div>
+                      <div><span class="text-amber-600 dark:text-amber-400">iframes in hsEmailWrap:</span> <span id="hsDebugIframes">0</span></div>
+                      <div><span class="text-amber-600 dark:text-amber-400">hidden field found:</span> <span id="hsDebugFieldFound">(searching...)</span></div>
+                      <div><span class="text-amber-600 dark:text-amber-400">hidden field value:</span> <span id="hsDebugFieldValue">(none)</span></div>
+                      <div class="pt-1 border-t border-amber-300 dark:border-amber-600 mt-1"><span class="text-amber-600 dark:text-amber-400">status:</span> <span id="hsDebugStatus">(waiting)</span></div>
+                    </div>
+                    <p class="mt-2 text-[10px] text-amber-600 dark:text-amber-500">
+                      Check browser console for [HS-Email] logs.
+                    </p>
+                  </div>
                 </aside>
 
                 <!-- HubSpot Email Form (hidden by default) -->
@@ -918,26 +939,6 @@
                     Fill in your details below and we'll send a copy of this estimate to your inbox.
                   </p>
                   <!-- HubSpot form will be dynamically injected here -->
-
-                  <!-- HubSpot Debug Section -->
-                  <div
-                    id="hsDebugSection"
-                    class="hidden mt-4 p-3 rounded-lg border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600"
-                  >
-                    <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1">
-                      HubSpot Debug – Estimator URL Injection Status:
-                    </p>
-                    <input
-                      id="hsDebugUrl"
-                      type="text"
-                      readonly
-                      class="block w-full rounded border border-amber-300 bg-white px-2 py-1 font-mono text-[11px] text-slate-700 dark:border-amber-600 dark:bg-slate-900 dark:text-slate-200"
-                      value="(waiting for form render...)"
-                    />
-                    <p class="mt-2 text-[10px] text-amber-600 dark:text-amber-500">
-                      This shows the injection status. Check browser console for detailed [HS-Email] logs.
-                    </p>
-                  </div>
                 </section>
               </div>
             </section>

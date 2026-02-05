@@ -15,19 +15,113 @@
     }
   }
 
-  /**
-   * Update the HubSpot debug field with current status
-   */
-  function updateDebugField(message) {
-    var debugInput = document.getElementById('hsDebugUrl');
-    if (debugInput) {
-      debugInput.value = message;
-    }
-    log('Debug:', message);
-  }
-
   // Store the latest estimator URL (fallback to current href)
   window.__latestEstimatorUrl = window.location.href;
+
+  // Guard: only render form once
+  var hsFormRendered = false;
+  var injectionIntervalId = null;
+  var injectionAttempts = 0;
+  var MAX_INJECTION_ATTEMPTS = 40; // 40 * 250ms = 10 seconds
+
+  // Track if hooks are installed and observer reference
+  var hooksInstalled = false;
+  var mutationObserver = null;
+  var lastKnownFieldNode = null;
+
+  /**
+   * Find the hidden hardware_estimate_url input within a container.
+   * ALWAYS use the namespaced selector (name ends with /hardware_estimate_url).
+   */
+  function findHiddenInput(container) {
+    if (!container) return null;
+    // Primary: name ending with /hardware_estimate_url (HubSpot namespaced like "0-1/hardware_estimate_url")
+    var input = container.querySelector('input[name$="/hardware_estimate_url"]');
+    if (input) {
+      log('Found field via [name$="/hardware_estimate_url"]:', input.name);
+      return input;
+    }
+    // Fallback: name containing hardware_estimate_url
+    input = container.querySelector('input[name*="hardware_estimate_url"]');
+    if (input) {
+      log('Found field via [name*="hardware_estimate_url"]:', input.name);
+      return input;
+    }
+    return null;
+  }
+
+  /**
+   * Set the field value NOW with maximum persistence.
+   * Sets value, defaultValue, and attribute to resist clearing.
+   */
+  function setFieldNow() {
+    var wrap = document.getElementById('hsEmailWrap');
+    var f = wrap ? findHiddenInput(wrap) : null;
+    var v = window.__latestEstimatorUrl;
+
+    if (!f || !v) {
+      log('setFieldNow: cannot set - field:', !!f, 'url:', !!v);
+      return false;
+    }
+
+    // Check if field node changed (was replaced)
+    if (lastKnownFieldNode && lastKnownFieldNode !== f) {
+      log('setFieldNow: FIELD NODE REPLACED! Old:', lastKnownFieldNode.name, 'New:', f.name);
+    }
+    lastKnownFieldNode = f;
+
+    // Set value in multiple ways for maximum persistence
+    f.value = v;
+    f.defaultValue = v;
+    f.setAttribute('value', v);
+
+    // Dispatch events to ensure HubSpot picks up the value
+    try {
+      var inputEvent = new Event('input', { bubbles: true });
+      var changeEvent = new Event('change', { bubbles: true });
+      f.dispatchEvent(inputEvent);
+      f.dispatchEvent(changeEvent);
+    } catch (_err) {
+      log('setFieldNow: Event dispatch failed (older browser?)');
+    }
+
+    log('setFieldNow: Set field', f.name, '=', v, '| value:', f.value, '| defaultValue:', f.defaultValue);
+    return f.value === v;
+  }
+
+  /**
+   * Update all HubSpot debug fields with current state
+   */
+  function updateDebugFields(status) {
+    var wrap = document.getElementById('hsEmailWrap');
+    var isVisible = wrap ? !wrap.classList.contains('hidden') : false;
+    var iframeCount = wrap ? wrap.querySelectorAll('iframe').length : 0;
+    var hiddenInput = wrap ? findHiddenInput(wrap) : null;
+
+    // Update individual debug spans
+    var elUrl = document.getElementById('hsDebugUrl');
+    var elVisible = document.getElementById('hsDebugVisible');
+    var elIframes = document.getElementById('hsDebugIframes');
+    var elFieldFound = document.getElementById('hsDebugFieldFound');
+    var elFieldValue = document.getElementById('hsDebugFieldValue');
+    var elStatus = document.getElementById('hsDebugStatus');
+
+    if (elUrl) elUrl.textContent = window.__latestEstimatorUrl || '(none)';
+    if (elVisible) elVisible.textContent = isVisible ? 'YES' : 'NO';
+    if (elIframes) elIframes.textContent = String(iframeCount);
+    if (elFieldFound) elFieldFound.textContent = hiddenInput ? ('YES [' + hiddenInput.name + ']') : 'NO';
+    if (elFieldValue) elFieldValue.textContent = hiddenInput ? (hiddenInput.value || '(empty)') : '(N/A)';
+    if (elStatus && status) elStatus.textContent = status;
+
+    log('Debug update:', {
+      latestEstimatorUrl: window.__latestEstimatorUrl,
+      hsEmailWrapVisible: isVisible,
+      iframeCount: iframeCount,
+      hiddenFieldFound: hiddenInput ? hiddenInput.name : null,
+      hiddenFieldValue: hiddenInput ? hiddenInput.value : null,
+      status: status
+    });
+  }
 
   // Listen for postMessage updates from iframe or self
   window.addEventListener('message', function (e) {
@@ -36,83 +130,126 @@
       if (!d || typeof d !== 'object') return;
       if (d.type !== 'HARDWARE_ESTIMATE_URL') return;
       if (typeof d.url !== 'string' || !d.url) return;
-      // Optionally check origin (accept all for flexibility, but type must match)
       window.__latestEstimatorUrl = d.url;
       log('Updated __latestEstimatorUrl from postMessage:', d.url);
+      // Re-inject when URL updates
+      setFieldNow();
     } catch (_err) {
       // Ignore malformed messages
     }
   });
 
   // Keep __latestEstimatorUrl in sync with current page URL as a fallback
-  // (useful when not embedded in an iframe)
   setInterval(function () {
     if (window.location && window.location.href) {
       window.__latestEstimatorUrl = window.location.href;
     }
   }, 500);
 
-  // Guard: only render form once
-  var hsFormRendered = false;
-  var injectionIntervalId = null;
-  var injectionAttempts = 0;
-  var MAX_INJECTION_ATTEMPTS = 40; // 40 * 250ms = 10 seconds
-
   /**
-   * Find the hidden hardware_estimate_url input within a container.
-   * HubSpot may namespace the field as "0-1/hardware_estimate_url" or similar.
+   * Last-moment handler for form interactions.
+   * Called on pointerdown, mousedown, click, and submit (all capture phase).
    */
-  function findHiddenInput(container) {
-    if (!container) return null;
-    // Try exact name first
-    var input = container.querySelector('input[name="hardware_estimate_url"]');
-    if (input) return input;
-    // Try name ending with /hardware_estimate_url (namespaced)
-    input = container.querySelector('input[name$="/hardware_estimate_url"]');
-    if (input) return input;
-    // Try name containing hardware_estimate_url
-    input = container.querySelector('input[name*="hardware_estimate_url"]');
-    if (input) return input;
-    return null;
+  function lastMomentHandler(e) {
+    var wrap = document.getElementById('hsEmailWrap');
+    var f = wrap ? findHiddenInput(wrap) : null;
+    log('lastMomentHandler:', e.type, '| field value before:', f ? f.value : '(no field)');
+    setFieldNow();
+    log('lastMomentHandler:', e.type, '| field value after:', f ? f.value : '(no field)');
+    updateDebugFields('HOOK:' + e.type + ' fired');
   }
 
   /**
-   * Inject the latest URL into the hidden field.
-   * Returns true if successful (value is set and matches).
+   * Install "last-moment" hooks on the form and container.
    */
-  function injectUrl(container) {
-    var url = window.__latestEstimatorUrl;
-    if (!url) {
-      log('No URL to inject');
-      updateDebugField('ERROR: No URL available');
-      return false;
+  function installFormHooks(wrap) {
+    if (hooksInstalled) {
+      log('Hooks already installed');
+      return;
     }
-    var input = findHiddenInput(container);
-    if (!input) {
-      log('Hidden input not found yet');
-      // List all inputs in container for debugging
-      var allInputs = container ? container.querySelectorAll('input') : [];
-      var inputNames = [];
-      for (var i = 0; i < allInputs.length; i++) {
-        inputNames.push(allInputs[i].name || '(no name)');
+
+    var form = wrap.querySelector('form');
+    if (!form) {
+      log('installFormHooks: No form found yet');
+      return;
+    }
+
+    hooksInstalled = true;
+    log('Installing last-moment hooks on form');
+
+    // Capture-phase listeners on the form
+    form.addEventListener('pointerdown', lastMomentHandler, true);
+    form.addEventListener('mousedown', lastMomentHandler, true);
+    form.addEventListener('click', lastMomentHandler, true);
+    form.addEventListener('submit', lastMomentHandler, true);
+
+    // Also on wrap container for broader coverage
+    wrap.addEventListener('pointerdown', lastMomentHandler, true);
+    wrap.addEventListener('mousedown', lastMomentHandler, true);
+    wrap.addEventListener('click', lastMomentHandler, true);
+    wrap.addEventListener('submit', lastMomentHandler, true);
+
+    log('Hooks installed on form and wrap');
+  }
+
+  /**
+   * Start MutationObserver to detect DOM changes and re-inject field value.
+   */
+  function startMutationObserver(wrap) {
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+    }
+
+    mutationObserver = new MutationObserver(function (mutations) {
+      // Check if any mutation involves inputs
+      var inputMutated = false;
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        if (m.type === 'childList') {
+          // Check added nodes for inputs
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var node = m.addedNodes[j];
+            if (node.nodeType === 1) { // Element node
+              if (node.tagName === 'INPUT' || node.querySelector && node.querySelector('input')) {
+                inputMutated = true;
+                break;
+              }
+            }
+          }
+        }
+        if (inputMutated) break;
       }
-      updateDebugField('Searching... Found ' + allInputs.length + ' inputs: ' + inputNames.join(', '));
-      return false;
-    }
-    input.value = url;
-    // Dispatch events to ensure HubSpot picks up the value
-    try {
-      var inputEvent = new Event('input', { bubbles: true });
-      var changeEvent = new Event('change', { bubbles: true });
-      input.dispatchEvent(inputEvent);
-      input.dispatchEvent(changeEvent);
-    } catch (_err) {
-      // Older browsers may not support Event constructor
-      log('Event dispatch failed (older browser?)');
-    }
-    log('Injected URL into hidden field:', url, 'Input name:', input.name);
-    updateDebugField('OK: Injected into [' + input.name + '] = ' + url);
-    return input.value === url;
+
+      if (inputMutated) {
+        log('MutationObserver: Input node added/changed, re-injecting');
+      }
+      // Always try to set field on any mutation (HubSpot may be manipulating DOM)
+      setFieldNow();
+      updateDebugFields('MUTATION detected');
+
+      // Try to install hooks if not done yet
+      if (!hooksInstalled) {
+        installFormHooks(wrap);
+      }
+    });
+
+    mutationObserver.observe(wrap, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['value']
+    });
+
+    log('MutationObserver started on wrap');
+
+    // Auto-disconnect after 15 seconds
+    setTimeout(function () {
+      if (mutationObserver) {
+        mutationObserver.disconnect();
+        mutationObserver = null;
+        log('MutationObserver disconnected after 15s timeout');
+      }
+    }, 15000);
   }
 
   /**
@@ -124,37 +261,48 @@
       clearInterval(injectionIntervalId);
     }
     injectionAttempts = 0;
-    updateDebugField('Starting injection loop... URL: ' + (window.__latestEstimatorUrl || '(none)'));
+    updateDebugFields('Starting injection loop...');
+
     injectionIntervalId = setInterval(function () {
       injectionAttempts++;
-      var success = injectUrl(container);
+      var success = setFieldNow();
+
+      // Once field is found, install hooks and start observer
+      var f = findHiddenInput(container);
+      if (f && !hooksInstalled) {
+        installFormHooks(container);
+        startMutationObserver(container);
+      }
+
+      updateDebugFields('Loop attempt ' + injectionAttempts + (success ? ' OK' : ' searching...'));
+
       if (success || injectionAttempts >= MAX_INJECTION_ATTEMPTS) {
         clearInterval(injectionIntervalId);
         injectionIntervalId = null;
         if (success) {
           log('Injection loop completed successfully after', injectionAttempts, 'attempts');
+          updateDebugFields('SUCCESS after ' + injectionAttempts + ' attempts');
         } else {
           log('Injection loop timed out after', injectionAttempts, 'attempts');
-          updateDebugField('TIMEOUT after ' + injectionAttempts + ' attempts. Hidden field not found.');
+          updateDebugFields('TIMEOUT after ' + injectionAttempts + ' attempts');
         }
       }
     }, 250);
   }
 
   /**
-   * Capture-phase submit listener to inject URL immediately before form submission.
+   * Global capture-phase submit listener as final fallback.
    */
   document.addEventListener('submit', function (e) {
     if (!e.target) return;
-    var input = findHiddenInput(e.target);
-    if (input) {
-      log('Submit intercepted, injecting URL');
-      updateDebugField('SUBMIT: Injecting URL now...');
-      injectUrl(e.target);
-    } else {
-      log('Submit intercepted but no hardware_estimate_url field found in form');
-      updateDebugField('SUBMIT: No hardware_estimate_url field in form!');
-    }
+    var wrap = document.getElementById('hsEmailWrap');
+    if (!wrap || !wrap.contains(e.target)) return;
+
+    var f = findHiddenInput(wrap);
+    log('GLOBAL submit intercepted | field value:', f ? f.value : '(no field)');
+    setFieldNow();
+    log('GLOBAL submit after setFieldNow | field value:', f ? f.value : '(no field)');
+    updateDebugFields('SUBMIT: Final injection done');
   }, true); // capture phase
 
   /**
@@ -204,17 +352,17 @@
     // Remove hidden class to show
     wrap.classList.remove('hidden');
 
-    // Show debug section
+    // Show debug section (in CTA area)
     var debugSection = document.getElementById('hsDebugSection');
     if (debugSection) {
       debugSection.classList.remove('hidden');
     }
 
+    // Update debug fields immediately
+    updateDebugFields('Form revealed, loading HubSpot...');
+
     // Scroll into view
     wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    // Update debug with current URL
-    updateDebugField('Form showing. Current URL: ' + (window.__latestEstimatorUrl || '(none)'));
 
     // Render form if not yet done
     renderHsForm(wrap);
