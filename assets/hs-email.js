@@ -14,8 +14,18 @@
     }
   }
 
-  // Store the latest estimator URL (one-time fallback; postMessage is source of truth)
+  // Store the latest estimator URL
   window.__latestEstimatorUrl = window.location.href;
+
+  /**
+   * Refresh the URL from current location (call before injection).
+   */
+  function refreshUrl() {
+    if (window.location && window.location.href) {
+      window.__latestEstimatorUrl = window.location.href;
+      log('refreshUrl:', window.__latestEstimatorUrl);
+    }
+  }
 
   // Listen for postMessage updates (primary source of URL)
   window.addEventListener('message', function (e) {
@@ -36,12 +46,44 @@
 
   /**
    * Find the hardware_estimate_url field in a container.
-   * Works with both hidden fields and normal text inputs (hidden via CSS).
+   * Searches both the container and any iframes inside it (HubSpot renders in iframe).
    */
   function findField(container) {
     if (!container) return null;
-    // Match any input with name ending in /hardware_estimate_url
-    return container.querySelector('input[name$="/hardware_estimate_url"]');
+    
+    // First try direct search in container
+    var field = container.querySelector('input[name$="/hardware_estimate_url"]');
+    if (field) {
+      log('findField: found in container');
+      return field;
+    }
+    
+    // Search inside iframes (HubSpot embeds form in iframe)
+    var iframes = container.querySelectorAll('iframe');
+    for (var i = 0; i < iframes.length; i++) {
+      try {
+        var iframeDoc = iframes[i].contentDocument || iframes[i].contentWindow.document;
+        if (iframeDoc) {
+          field = iframeDoc.querySelector('input[name$="/hardware_estimate_url"]');
+          if (field) {
+            log('findField: found in iframe', i);
+            return field;
+          }
+          // Also try without the namespaced prefix
+          field = iframeDoc.querySelector('input[name*="hardware_estimate_url"]');
+          if (field) {
+            log('findField: found in iframe (partial match)', i, field.name);
+            return field;
+          }
+        }
+      } catch (e) {
+        // Cross-origin iframe - can't access
+        log('findField: iframe', i, 'is cross-origin, cannot access');
+      }
+    }
+    
+    log('findField: not found in container or iframes');
+    return null;
   }
 
   /**
@@ -128,6 +170,9 @@
     submitListenerAttached = true;
 
     function injectNow(reason) {
+      // Refresh URL before injection to get latest query params
+      refreshUrl();
+      
       var wrap = document.getElementById('hsEmailWrap');
       if (!wrap) return;
       var f = findField(wrap);
@@ -191,6 +236,8 @@
 
     // Helper to inject URL into HubSpot form data
     function injectIntoPayload(body) {
+      // Refresh URL right before payload injection
+      refreshUrl();
       var url = window.__latestEstimatorUrl || '';
       if (!url) {
         log('INTERCEPT: no URL to inject');
@@ -378,6 +425,9 @@
    * Show the HubSpot email form section (idempotent).
    */
   function showEmailForm() {
+    // Refresh URL to get current location with query params
+    refreshUrl();
+    
     var wrap = document.getElementById('hsEmailWrap');
     if (!wrap) {
       log('hsEmailWrap not found');
