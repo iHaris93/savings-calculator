@@ -35,12 +35,13 @@
   var xhrInterceptorInstalled = false;
 
   /**
-   * Find the hidden field in a container.
+   * Find the hardware_estimate_url field in a container.
+   * Works with both hidden fields and normal text inputs (hidden via CSS).
    */
   function findField(container) {
     if (!container) return null;
-    // Use type="hidden" + namespaced selector for safety
-    return container.querySelector('input[type="hidden"][name$="/hardware_estimate_url"]');
+    // Match any input with name ending in /hardware_estimate_url
+    return container.querySelector('input[name$="/hardware_estimate_url"]');
   }
 
   /**

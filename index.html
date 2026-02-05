@@ -102,6 +102,17 @@
         background: #ecfdf5;
         border-radius: 0.5rem;
       }
+      /* Hide the estimate URL field visually but keep it as a normal text input
+         so HubSpot's internal model updates properly */
+      #hsEmailWrap input[name$="/hardware_estimate_url"],
+      #hsEmailWrap .hs-form-field:has(input[name$="/hardware_estimate_url"]) {
+        position: absolute !important;
+        left: -9999px !important;
+        width: 1px !important;
+        height: 1px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
     </style>
   </head>
   <body class="min-h-screen bg-white text-slate-900 antialiased" data-mode="guided">
