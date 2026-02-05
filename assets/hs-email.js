@@ -32,6 +32,7 @@
   var hsScriptLoaded = false;
   var hsFormInjected = false;
   var submitListenerAttached = false;
+  var xhrInterceptorInstalled = false;
 
   /**
    * Find the hidden field in a container.
@@ -178,6 +179,145 @@
   }
 
   /**
+   * Install XHR/fetch interceptor to inject URL directly into HubSpot payload.
+   * This bypasses HubSpot's internal React state which ignores DOM changes.
+   */
+  function installPayloadInterceptor() {
+    if (xhrInterceptorInstalled) return;
+    xhrInterceptorInstalled = true;
+
+    var targetUrl = window.__latestEstimatorUrl || '';
+
+    // Helper to inject URL into HubSpot form data
+    function injectIntoPayload(body) {
+      var url = window.__latestEstimatorUrl || '';
+      if (!url) {
+        log('INTERCEPT: no URL to inject');
+        return body;
+      }
+
+      // Handle FormData
+      if (body instanceof FormData) {
+        // Check if it's a HubSpot form submission
+        var hasHsField = false;
+        body.forEach(function(value, key) {
+          if (key.indexOf('hardware_estimate_url') !== -1) {
+            hasHsField = true;
+          }
+        });
+        if (hasHsField) {
+          log('INTERCEPT: Found FormData with hardware_estimate_url, injecting');
+          body.set('0-1/hardware_estimate_url', url);
+          log('INTERCEPT: FormData updated');
+        }
+        return body;
+      }
+
+      // Handle JSON string body
+      if (typeof body === 'string') {
+        try {
+          var data = JSON.parse(body);
+          
+          // Check if this looks like a HubSpot submission
+          if (data.fields || data.fieldValues || body.indexOf('hardware_estimate_url') !== -1) {
+            log('INTERCEPT: Found JSON with HubSpot fields');
+            
+            // Handle fields array format
+            if (Array.isArray(data.fields)) {
+              var found = false;
+              for (var i = 0; i < data.fields.length; i++) {
+                if (data.fields[i].name && data.fields[i].name.indexOf('hardware_estimate_url') !== -1) {
+                  data.fields[i].value = url;
+                  found = true;
+                  log('INTERCEPT: Updated fields array');
+                  break;
+                }
+              }
+              if (!found) {
+                data.fields.push({ name: 'hardware_estimate_url', value: url });
+                log('INTERCEPT: Added to fields array');
+              }
+            }
+            
+            // Handle fieldValues object format (seen in hs_context)
+            if (data.fieldValues) {
+              var keys = Object.keys(data.fieldValues);
+              for (var j = 0; j < keys.length; j++) {
+                if (keys[j].indexOf('hardware_estimate_url') !== -1) {
+                  data.fieldValues[keys[j]] = url;
+                  log('INTERCEPT: Updated fieldValues.' + keys[j]);
+                }
+              }
+            }
+            
+            // Handle top-level namespaced field
+            var topKeys = Object.keys(data);
+            for (var k = 0; k < topKeys.length; k++) {
+              if (topKeys[k].indexOf('hardware_estimate_url') !== -1) {
+                data[topKeys[k]] = url;
+                log('INTERCEPT: Updated top-level ' + topKeys[k]);
+              }
+            }
+            
+            return JSON.stringify(data);
+          }
+        } catch (e) {
+          // Not JSON, check if URL-encoded
+          if (body.indexOf('hardware_estimate_url') !== -1) {
+            log('INTERCEPT: Found URL-encoded with hardware_estimate_url');
+            // Replace empty value with our URL
+            body = body.replace(
+              /hardware_estimate_url=(&|$)/g,
+              'hardware_estimate_url=' + encodeURIComponent(url) + '$1'
+            );
+            // Also try the namespaced version
+            body = body.replace(
+              /0-1%2Fhardware_estimate_url=(&|$)/g,
+              '0-1%2Fhardware_estimate_url=' + encodeURIComponent(url) + '$1'
+            );
+            log('INTERCEPT: URL-encoded body updated');
+          }
+        }
+      }
+
+      return body;
+    }
+
+    // Intercept XMLHttpRequest
+    var origXhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function(body) {
+      if (this._url && (this._url.indexOf('hsforms') !== -1 || this._url.indexOf('hubspot') !== -1)) {
+        log('INTERCEPT XHR: HubSpot request detected');
+        body = injectIntoPayload(body);
+      }
+      return origXhrSend.call(this, body);
+    };
+
+    var origXhrOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      this._url = url;
+      return origXhrOpen.apply(this, arguments);
+    };
+
+    // Intercept fetch
+    var origFetch = window.fetch;
+    window.fetch = function(input, init) {
+      var url = typeof input === 'string' ? input : (input.url || '');
+      
+      if (url.indexOf('hsforms') !== -1 || url.indexOf('hubspot') !== -1) {
+        log('INTERCEPT FETCH: HubSpot request detected');
+        if (init && init.body) {
+          init.body = injectIntoPayload(init.body);
+        }
+      }
+      
+      return origFetch.apply(this, arguments);
+    };
+
+    log('Payload interceptor installed (XHR + fetch)');
+  }
+
+  /**
    * Load HubSpot developer embed script.
    */
   function loadHsScript(callback) {
@@ -223,6 +363,9 @@
 
     // Attach pre-submit guards (click/enter/submit capture)
     attachPreSubmitGuards();
+
+    // Install payload interceptor (XHR/fetch) to inject URL into actual request
+    installPayloadInterceptor();
 
     // Start retry loop to set field once form renders
     setTimeout(function () {
