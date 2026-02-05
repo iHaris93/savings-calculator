@@ -102,14 +102,68 @@
         background: #ecfdf5;
         border-radius: 0.5rem;
       }
-      /* Hide the estimate URL input (keep in DOM so HubSpot still submits it) */
-      #hsEmailWrap input[name$="/hardware_estimate_url"] {
-        position: absolute !important;
-        left: -9999px !important;
-        width: 1px !important;
-        height: 1px !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
+      /* Custom HubSpot form styling */
+      #hsEmailWrap .hs-custom-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      #hsEmailWrap .hs-field label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #334155;
+        margin-bottom: 0.25rem;
+      }
+      #hsEmailWrap .hs-field label .hs-required {
+        color: #dc2626;
+      }
+      #hsEmailWrap .hs-field input[type="text"],
+      #hsEmailWrap .hs-field input[type="email"] {
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      #hsEmailWrap .hs-field input:focus {
+        outline: none;
+        border-color: #4f60dc;
+        box-shadow: 0 0 0 2px rgba(79, 96, 220, 0.2);
+      }
+      #hsEmailWrap .hs-submit button {
+        background-color: #4f60dc;
+        color: #fff;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s;
+      }
+      #hsEmailWrap .hs-submit button:hover {
+        background-color: #3d4cb8;
+      }
+      #hsEmailWrap .hs-submit button:disabled {
+        background-color: #94a3b8;
+        cursor: not-allowed;
+      }
+      #hsEmailWrap .hs-message {
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+      }
+      #hsEmailWrap .hs-message.hs-success {
+        background-color: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+      }
+      #hsEmailWrap .hs-message.hs-error {
+        background-color: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
       }
     </style>
   </head>

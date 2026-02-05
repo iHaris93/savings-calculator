@@ -1,12 +1,14 @@
 /**
- * HubSpot Email PDF Form Integration (Developer Embed)
- * Uses HubSpot developer embed script with capture-phase submit injection.
- * Form type doesn't support v2/v3 API, so we use DOM injection.
+ * HubSpot Email PDF Form Integration
+ * Uses custom form + direct HubSpot Forms API submission.
+ * Bypasses HubSpot's cross-origin iframe completely.
  */
 (function () {
   'use strict';
 
   var DEBUG = true;
+  var PORTAL_ID = '3983149';
+  var FORM_ID = 'a2c21e81-1915-4b3d-a858-9aadfe08b542';
 
   function log() {
     if (DEBUG && typeof console !== 'undefined' && console.log) {
@@ -18,7 +20,7 @@
   window.__latestEstimatorUrl = window.location.href;
 
   /**
-   * Refresh the URL from current location (call before injection).
+   * Refresh the URL from current location.
    */
   function refreshUrl() {
     if (window.location && window.location.href) {
@@ -27,7 +29,7 @@
     }
   }
 
-  // Listen for postMessage updates (primary source of URL)
+  // Listen for postMessage updates
   window.addEventListener('message', function (e) {
     try {
       var d = e.data;
@@ -39,132 +41,12 @@
   });
 
   // Guards
-  var hsScriptLoaded = false;
-  var hsFormInjected = false;
-  var submitListenerAttached = false;
-  var xhrInterceptorInstalled = false;
-
-  /**
-   * Find the hardware_estimate_url field in a container.
-   * Searches both the container and any iframes inside it (HubSpot renders in iframe).
-   */
-  function findField(container) {
-    if (!container) return null;
-    
-    // First try direct search in container
-    var field = container.querySelector('input[name$="/hardware_estimate_url"]');
-    if (field) {
-      log('findField: found in container');
-      return field;
-    }
-    
-    // Search inside iframes (HubSpot embeds form in iframe)
-    var iframes = container.querySelectorAll('iframe');
-    for (var i = 0; i < iframes.length; i++) {
-      try {
-        var iframeDoc = iframes[i].contentDocument || iframes[i].contentWindow.document;
-        if (iframeDoc) {
-          field = iframeDoc.querySelector('input[name$="/hardware_estimate_url"]');
-          if (field) {
-            log('findField: found in iframe', i);
-            return field;
-          }
-          // Also try without the namespaced prefix
-          field = iframeDoc.querySelector('input[name*="hardware_estimate_url"]');
-          if (field) {
-            log('findField: found in iframe (partial match)', i, field.name);
-            return field;
-          }
-        }
-      } catch (e) {
-        // Cross-origin iframe - can't access
-        log('findField: iframe', i, 'is cross-origin, cannot access');
-      }
-    }
-    
-    log('findField: not found in container or iframes');
-    return null;
-  }
-
-  /**
-   * Hard-set field value + dispatch events to update HubSpot's internal model.
-   */
-  function hardSetField(f, v) {
-    if (!f) return false;
-    f.value = v;
-    f.defaultValue = v;
-    f.setAttribute('value', v);
-    try { f.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
-    try { f.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-    return true;
-  }
-
-  /**
-   * Hide the estimate URL field wrapper via JS (more reliable than CSS guessing).
-   */
-  function hideEstimateUrlField(inputEl) {
-    if (!inputEl) return;
-    var row =
-      inputEl.closest('.hs-form-field') ||
-      inputEl.closest('.hs-form__field') ||
-      inputEl.closest('.field') ||
-      inputEl.parentElement;
-    if (row && row.style) {
-      row.style.position = 'absolute';
-      row.style.left = '-9999px';
-      log('hideEstimateUrlField: hidden wrapper', row.className || row.tagName);
-    }
-  }
-
-  /**
-   * Set the field value with maximum persistence.
-   */
-  function setFieldValue(container) {
-    var f = findField(container);
-    var v = window.__latestEstimatorUrl || '';
-    if (!f) {
-      log('setFieldValue: field not found');
-      return false;
-    }
-    if (!v) {
-      log('setFieldValue: no URL');
-      return false;
-    }
-    var ok = hardSetField(f, v);
-    log('setFieldValue:', ok ? 'SUCCESS' : 'FAIL', f.name, '=', v);
-    // Hide the field wrapper once we find it
-    hideEstimateUrlField(f);
-    return ok;
-  }
-
-  /**
-   * Retry field injection with setTimeout. Max 10 attempts.
-   */
-  function retrySetField(container, attempt) {
-    attempt = attempt || 0;
-    if (attempt >= 10) {
-      log('retrySetField: gave up after 10 attempts');
-      updateDebugFields('TIMEOUT: field not found');
-      return;
-    }
-    if (setFieldValue(container)) {
-      updateDebugFields('Field set OK');
-      return;
-    }
-    log('retrySetField: attempt', attempt + 1, 'scheduling retry');
-    updateDebugFields('Retry ' + (attempt + 1) + '/10...');
-    setTimeout(function () {
-      retrySetField(container, attempt + 1);
-    }, 200);
-  }
+  var formRendered = false;
 
   /**
    * Update debug UI.
    */
   function updateDebugFields(status) {
-    var wrap = document.getElementById('hsEmailWrap');
-    var f = wrap ? findField(wrap) : null;
-
     var elUrl = document.getElementById('hsDebugUrl');
     var elVisible = document.getElementById('hsDebugVisible');
     var elIframes = document.getElementById('hsDebugIframes');
@@ -172,279 +54,172 @@
     var elFieldValue = document.getElementById('hsDebugFieldValue');
     var elStatus = document.getElementById('hsDebugStatus');
 
+    var wrap = document.getElementById('hsEmailWrap');
+    var urlInput = document.getElementById('hs-hardware-estimate-url');
+
     if (elUrl) elUrl.textContent = window.__latestEstimatorUrl || '(none)';
     if (elVisible) elVisible.textContent = wrap && !wrap.classList.contains('hidden') ? 'YES' : 'NO';
-    if (elIframes) elIframes.textContent = wrap ? wrap.querySelectorAll('iframe').length : 0;
-    if (elFieldFound) elFieldFound.textContent = f ? 'YES [' + f.name + ']' : 'NO';
-    if (elFieldValue) elFieldValue.textContent = f ? (f.value || '(empty)') : '(N/A)';
+    if (elIframes) elIframes.textContent = '0 (direct API)';
+    if (elFieldFound) elFieldFound.textContent = urlInput ? 'YES (custom form)' : 'NO';
+    if (elFieldValue) elFieldValue.textContent = urlInput ? (urlInput.value || '(empty)') : '(N/A)';
     if (elStatus && status) elStatus.textContent = status;
   }
 
   /**
-   * Attach pre-submit guards: click, keydown Enter, submit (all capture phase).
-   * Inject URL earlier than submit to give HubSpot time to update internal model.
+   * Submit form data directly to HubSpot Forms API.
    */
-  function attachPreSubmitGuards() {
-    if (submitListenerAttached) return;
-    submitListenerAttached = true;
+  function submitToHubSpot(formData, callback) {
+    var url = 'https://api.hsforms.com/submissions/v3/integration/submit/' + PORTAL_ID + '/' + FORM_ID;
+    
+    log('Submitting to HubSpot API:', url);
+    log('Form data:', JSON.stringify(formData));
 
-    function injectNow(reason) {
-      // Refresh URL before injection to get latest query params
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    })
+    .then(function(response) {
+      log('HubSpot response status:', response.status);
+      return response.json().then(function(data) {
+        return { status: response.status, data: data };
+      });
+    })
+    .then(function(result) {
+      if (result.status === 200) {
+        log('HubSpot submission SUCCESS:', result.data);
+        callback(null, result.data);
+      } else {
+        log('HubSpot submission ERROR:', result.data);
+        callback(result.data, null);
+      }
+    })
+    .catch(function(err) {
+      log('HubSpot submission FAILED:', err);
+      callback(err, null);
+    });
+  }
+
+  /**
+   * Render our custom form (no HubSpot iframe).
+   */
+  function renderCustomForm(container) {
+    if (formRendered) {
+      log('Form already rendered');
+      return;
+    }
+    formRendered = true;
+
+    // Create form HTML
+    var formHtml = '\n' +
+      '<form id="hs-custom-form" class="hs-custom-form">\n' +
+      '  <div class="hs-field">\n' +
+      '    <label for="hs-firstname">First Name <span class="hs-required">*</span></label>\n' +
+      '    <input type="text" id="hs-firstname" name="firstname" required />\n' +
+      '  </div>\n' +
+      '  <div class="hs-field">\n' +
+      '    <label for="hs-lastname">Last Name <span class="hs-required">*</span></label>\n' +
+      '    <input type="text" id="hs-lastname" name="lastname" required />\n' +
+      '  </div>\n' +
+      '  <div class="hs-field">\n' +
+      '    <label for="hs-email">Email <span class="hs-required">*</span></label>\n' +
+      '    <input type="email" id="hs-email" name="email" required />\n' +
+      '  </div>\n' +
+      '  <input type="hidden" id="hs-hardware-estimate-url" name="hardware_estimate_url" value="" />\n' +
+      '  <div class="hs-field hs-submit">\n' +
+      '    <button type="submit" id="hs-submit-btn">Send me my estimate</button>\n' +
+      '  </div>\n' +
+      '  <div id="hs-form-message" class="hs-message" style="display:none;"></div>\n' +
+      '</form>\n';
+
+    container.innerHTML = formHtml;
+
+    // Set the hidden URL field
+    refreshUrl();
+    var urlInput = document.getElementById('hs-hardware-estimate-url');
+    if (urlInput) {
+      urlInput.value = window.__latestEstimatorUrl || '';
+      log('Set hidden URL field:', urlInput.value);
+    }
+
+    // Handle form submission
+    var form = document.getElementById('hs-custom-form');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
       refreshUrl();
       
-      var wrap = document.getElementById('hsEmailWrap');
-      if (!wrap) return;
-      var f = findField(wrap);
-      var v = window.__latestEstimatorUrl || '';
-      if (!f || !v) {
-        log(reason + ': cannot inject - field:', !!f, 'url:', !!v);
+      var firstname = document.getElementById('hs-firstname').value.trim();
+      var lastname = document.getElementById('hs-lastname').value.trim();
+      var email = document.getElementById('hs-email').value.trim();
+      var estimateUrl = window.__latestEstimatorUrl || '';
+
+      if (!firstname || !lastname || !email) {
+        showMessage('Please fill in all required fields.', 'error');
         return;
       }
 
-      log(reason + ': injecting URL into', f.name);
-      log(reason + ': before =', f.value);
-      hardSetField(f, v);
-      log(reason + ': after  =', f.value);
-      updateDebugFields(reason + ': injected');
-    }
+      // Disable submit button
+      var submitBtn = document.getElementById('hs-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+      updateDebugFields('Submitting...');
 
-    // 1) Click on submit button (capture) - fires before HubSpot processes
-    document.addEventListener('click', function (e) {
-      var wrap = document.getElementById('hsEmailWrap');
-      if (!wrap) return;
-      if (!wrap.contains(e.target)) return;
-
-      // HubSpot submit can be <input type="submit"> or <button type="submit">
-      var t = e.target;
-      var isSubmit =
-        (t.tagName === 'INPUT' && (t.type || '').toLowerCase() === 'submit') ||
-        (t.tagName === 'BUTTON' && ((t.type || 'submit').toLowerCase() === 'submit'));
-
-      if (isSubmit) injectNow('CLICK');
-    }, true);
-
-    // 2) Enter key submits (capture)
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      var wrap = document.getElementById('hsEmailWrap');
-      if (!wrap) return;
-      if (!wrap.contains(e.target)) return;
-      injectNow('ENTER');
-    }, true);
-
-    // 3) Submit (capture) as last safety net
-    document.addEventListener('submit', function (e) {
-      var wrap = document.getElementById('hsEmailWrap');
-      if (!wrap) return;
-      if (!wrap.contains(e.target)) return;
-      injectNow('SUBMIT');
-    }, true);
-
-    log('Pre-submit guards attached (click/enter/submit capture)');
-  }
-
-  /**
-   * Install XHR/fetch interceptor to inject URL directly into HubSpot payload.
-   * This bypasses HubSpot's internal React state which ignores DOM changes.
-   */
-  function installPayloadInterceptor() {
-    if (xhrInterceptorInstalled) return;
-    xhrInterceptorInstalled = true;
-
-    var targetUrl = window.__latestEstimatorUrl || '';
-
-    // Helper to inject URL into HubSpot form data
-    function injectIntoPayload(body) {
-      // Refresh URL right before payload injection
-      refreshUrl();
-      var url = window.__latestEstimatorUrl || '';
-      if (!url) {
-        log('INTERCEPT: no URL to inject');
-        return body;
-      }
-
-      // Handle FormData
-      if (body instanceof FormData) {
-        // Check if it's a HubSpot form submission
-        var hasHsField = false;
-        body.forEach(function(value, key) {
-          if (key.indexOf('hardware_estimate_url') !== -1) {
-            hasHsField = true;
-          }
-        });
-        if (hasHsField) {
-          log('INTERCEPT: Found FormData with hardware_estimate_url, injecting');
-          body.set('0-1/hardware_estimate_url', url);
-          log('INTERCEPT: FormData updated');
+      // Build HubSpot API payload
+      var formData = {
+        fields: [
+          { name: 'firstname', value: firstname },
+          { name: 'lastname', value: lastname },
+          { name: 'email', value: email },
+          { name: 'hardware_estimate_url', value: estimateUrl }
+        ],
+        context: {
+          pageUri: window.location.href,
+          pageName: document.title
         }
-        return body;
-      }
+      };
 
-      // Handle JSON string body
-      if (typeof body === 'string') {
-        try {
-          var data = JSON.parse(body);
-          
-          // Check if this looks like a HubSpot submission
-          if (data.fields || data.fieldValues || body.indexOf('hardware_estimate_url') !== -1) {
-            log('INTERCEPT: Found JSON with HubSpot fields');
-            
-            // Handle fields array format
-            if (Array.isArray(data.fields)) {
-              var found = false;
-              for (var i = 0; i < data.fields.length; i++) {
-                if (data.fields[i].name && data.fields[i].name.indexOf('hardware_estimate_url') !== -1) {
-                  data.fields[i].value = url;
-                  found = true;
-                  log('INTERCEPT: Updated fields array');
-                  break;
-                }
-              }
-              if (!found) {
-                data.fields.push({ name: 'hardware_estimate_url', value: url });
-                log('INTERCEPT: Added to fields array');
-              }
-            }
-            
-            // Handle fieldValues object format (seen in hs_context)
-            if (data.fieldValues) {
-              var keys = Object.keys(data.fieldValues);
-              for (var j = 0; j < keys.length; j++) {
-                if (keys[j].indexOf('hardware_estimate_url') !== -1) {
-                  data.fieldValues[keys[j]] = url;
-                  log('INTERCEPT: Updated fieldValues.' + keys[j]);
-                }
-              }
-            }
-            
-            // Handle top-level namespaced field
-            var topKeys = Object.keys(data);
-            for (var k = 0; k < topKeys.length; k++) {
-              if (topKeys[k].indexOf('hardware_estimate_url') !== -1) {
-                data[topKeys[k]] = url;
-                log('INTERCEPT: Updated top-level ' + topKeys[k]);
-              }
-            }
-            
-            return JSON.stringify(data);
-          }
-        } catch (e) {
-          // Not JSON, check if URL-encoded
-          if (body.indexOf('hardware_estimate_url') !== -1) {
-            log('INTERCEPT: Found URL-encoded with hardware_estimate_url');
-            // Replace empty value with our URL
-            body = body.replace(
-              /hardware_estimate_url=(&|$)/g,
-              'hardware_estimate_url=' + encodeURIComponent(url) + '$1'
-            );
-            // Also try the namespaced version
-            body = body.replace(
-              /0-1%2Fhardware_estimate_url=(&|$)/g,
-              '0-1%2Fhardware_estimate_url=' + encodeURIComponent(url) + '$1'
-            );
-            log('INTERCEPT: URL-encoded body updated');
-          }
+      log('Submitting with hardware_estimate_url:', estimateUrl);
+
+      submitToHubSpot(formData, function(err, result) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send me my estimate';
+
+        if (err) {
+          log('Submission error:', err);
+          var errMsg = err.message || (err.errors && err.errors[0] && err.errors[0].message) || 'Submission failed. Please try again.';
+          showMessage(errMsg, 'error');
+          updateDebugFields('ERROR: ' + errMsg);
+        } else {
+          log('Submission success');
+          showMessage('Thank you! Your estimate has been sent to your email.', 'success');
+          form.reset();
+          // Re-set the URL field for next submission
+          if (urlInput) urlInput.value = window.__latestEstimatorUrl || '';
+          updateDebugFields('SUCCESS: Submitted!');
         }
-      }
+      });
+    });
 
-      return body;
+    function showMessage(msg, type) {
+      var msgEl = document.getElementById('hs-form-message');
+      if (msgEl) {
+        msgEl.textContent = msg;
+        msgEl.className = 'hs-message hs-' + type;
+        msgEl.style.display = 'block';
+      }
     }
 
-    // Intercept XMLHttpRequest
-    var origXhrSend = XMLHttpRequest.prototype.send;
-    XMLHttpRequest.prototype.send = function(body) {
-      if (this._url && (this._url.indexOf('hsforms') !== -1 || this._url.indexOf('hubspot') !== -1)) {
-        log('INTERCEPT XHR: HubSpot request detected');
-        body = injectIntoPayload(body);
-      }
-      return origXhrSend.call(this, body);
-    };
-
-    var origXhrOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function(method, url) {
-      this._url = url;
-      return origXhrOpen.apply(this, arguments);
-    };
-
-    // Intercept fetch
-    var origFetch = window.fetch;
-    window.fetch = function(input, init) {
-      var url = typeof input === 'string' ? input : (input.url || '');
-      
-      if (url.indexOf('hsforms') !== -1 || url.indexOf('hubspot') !== -1) {
-        log('INTERCEPT FETCH: HubSpot request detected');
-        if (init && init.body) {
-          init.body = injectIntoPayload(init.body);
-        }
-      }
-      
-      return origFetch.apply(this, arguments);
-    };
-
-    log('Payload interceptor installed (XHR + fetch)');
+    log('Custom form rendered');
+    updateDebugFields('Form ready (direct API)');
   }
 
   /**
-   * Load HubSpot developer embed script.
-   */
-  function loadHsScript(callback) {
-    if (hsScriptLoaded) {
-      callback();
-      return;
-    }
-    var script = document.createElement('script');
-    script.src = 'https://js.hsforms.net/forms/embed/developer/3983149.js';
-    script.defer = true;
-    script.onload = function () {
-      hsScriptLoaded = true;
-      log('HubSpot developer script loaded');
-      callback();
-    };
-    script.onerror = function () {
-      log('HubSpot script failed to load');
-      updateDebugFields('ERROR: script load failed');
-    };
-    document.head.appendChild(script);
-  }
-
-  /**
-   * Inject HubSpot form HTML into container.
-   */
-  function injectFormHtml(container) {
-    if (hsFormInjected) {
-      log('Form already injected');
-      return;
-    }
-    hsFormInjected = true;
-
-    // Create the hs-form-html div that the developer script looks for
-    var formDiv = document.createElement('div');
-    formDiv.className = 'hs-form-html';
-    formDiv.setAttribute('data-region', 'na1');
-    formDiv.setAttribute('data-form-id', 'a2c21e81-1915-4b3d-a858-9aadfe08b542');
-    formDiv.setAttribute('data-portal-id', '3983149');
-    container.appendChild(formDiv);
-
-    log('Form HTML injected, waiting for HubSpot to render...');
-    updateDebugFields('Form injected, rendering...');
-
-    // Attach pre-submit guards (click/enter/submit capture)
-    attachPreSubmitGuards();
-
-    // Install payload interceptor (XHR/fetch) to inject URL into actual request
-    installPayloadInterceptor();
-
-    // Start retry loop to set field once form renders
-    setTimeout(function () {
-      retrySetField(container, 0);
-    }, 500);
-  }
-
-  /**
-   * Show the HubSpot email form section (idempotent).
+   * Show the email form section.
    */
   function showEmailForm() {
-    // Refresh URL to get current location with query params
     refreshUrl();
     
     var wrap = document.getElementById('hsEmailWrap');
@@ -453,28 +228,21 @@
       return;
     }
 
-    // Show wrap
     wrap.classList.remove('hidden');
 
-    // Show debug section
     var debugSection = document.getElementById('hsDebugSection');
     if (debugSection) {
       debugSection.classList.remove('hidden');
     }
 
-    updateDebugFields('Loading HubSpot...');
-
-    // Scroll into view
+    updateDebugFields('Rendering form...');
     wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // Load script then inject form
-    loadHsScript(function () {
-      injectFormHtml(wrap);
-    });
+    // Render our custom form
+    renderCustomForm(wrap);
   }
 
-  // Expose globally
   window.showHsEmailForm = showEmailForm;
 
-  log('hs-email.js initialized (developer embed)');
+  log('hs-email.js initialized (direct API mode)');
 })();
