@@ -29,6 +29,10 @@ This project uses date-based entries rather than semantic version numbers. Dates
 ### Infrastructure
 - Added `scripts/` directory with `package.json` for PDF generation tooling.
 - Added `out/`, `scripts/out/`, and `scripts/node_modules/` to `.gitignore`.
+- Extracted shared HubSpot form CSS to `assets/hubspot-form.css`.
+- Extracted PDF template to `assets/pdf-template.html` with dynamic loading via `pdf-render.js`.
+- Removed redundant `warping/` directory; consolidated on `deft/` framework.
+- Updated `AGENTS.md` to reference `deft/main.md`.
 
 ## 2026-01-26
 

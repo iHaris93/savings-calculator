@@ -8,6 +8,46 @@
 })(typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : this, function () {
   'use strict';
 
+  var pdfTemplateLoaded = false;
+  var pdfTemplateHtml = null;
+
+  function loadPdfTemplate(callback) {
+    if (pdfTemplateLoaded && pdfTemplateHtml) {
+      callback(pdfTemplateHtml);
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'assets/pdf-template.html', true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+        pdfTemplateHtml = xhr.responseText;
+        pdfTemplateLoaded = true;
+        callback(pdfTemplateHtml);
+      }
+    };
+    xhr.send();
+  }
+
+  function ensurePdfRoot(callback) {
+    var root = document.getElementById('pdfRoot');
+    if (root) {
+      callback(root);
+      return;
+    }
+    // Load and inject template
+    loadPdfTemplate(function (html) {
+      var container = document.getElementById('pdfTemplateContainer');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'pdfTemplateContainer';
+        document.body.appendChild(container);
+      }
+      container.innerHTML = html;
+      var newRoot = document.getElementById('pdfRoot');
+      callback(newRoot);
+    });
+  }
+
   function getCore() {
     if (typeof window !== 'undefined' && window.SighthoundCalcCore) {
       return window.SighthoundCalcCore;
@@ -167,11 +207,11 @@
       params = state.getParams();
     }
 
-    var root = (typeof document !== 'undefined') && document.getElementById('pdfRoot');
-    if (!root) return;
-
-    renderPdfFromParams(params, root);
-    window.print();
+    ensurePdfRoot(function (root) {
+      if (!root) return;
+      renderPdfFromParams(params, root);
+      window.print();
+    });
   }
 
   return {

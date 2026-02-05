@@ -1,0 +1,155 @@
+<section id="pdfRoot" class="print-only">
+  <header class="flex items-center justify-between gap-3 mb-3">
+    <div>
+      <h1 id="pdfTitle" class="text-sm font-semibold text-slate-900">
+        Hardware savings estimate
+      </h1>
+      <p class="pdf-meta">
+        Generated with the Sighthound hardware savings calculator.
+      </p>
+    </div>
+    <div class="flex flex-col items-end gap-1">
+      <p id="pdfScenario" class="pdf-meta"></p>
+      <img
+        src="assets/sighthound-logo-black.png"
+        alt="Sighthound"
+        class="h-5"
+      />
+    </div>
+  </header>
+
+  <section class="pdf-section">
+    <h2 class="text-xs font-semibold text-slate-900">Hardware totals</h2>
+    <div class="pdf-grid mt-1">
+      <div class="pdf-card">
+        <p id="pdfTodayLabel" class="text-[11px] font-medium text-slate-600"></p>
+        <p id="pdfTodayTotal" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p id="pdfSighthoundLabel" class="text-[11px] font-medium text-slate-600"></p>
+        <p id="pdfSighthoundTotal" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pdfSavingsSection" class="pdf-section">
+    <h2 class="text-xs font-semibold text-slate-900">Savings vs today (Scenario A)</h2>
+    <div class="pdf-grid mt-1">
+      <div class="pdf-card">
+        <p id="pdfSavingsLabel" class="text-[11px] text-slate-500"></p>
+        <p id="pdfSavingsValue" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Percent reduction</p>
+        <p id="pdfPercentReduction" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pdf-section">
+    <h2 class="text-xs font-semibold text-slate-900">Deployment details</h2>
+    <div class="pdf-grid mt-1">
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Compute Nodes required</p>
+        <p id="pdfNodes" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Cost per camera before</p>
+        <p id="pdfCostPerCameraBefore" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Cost per camera with Sighthound</p>
+        <p id="pdfCostPerCameraAfter" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pdf-section">
+    <h2 class="text-xs font-semibold text-slate-900">Software costs</h2>
+    <div class="pdf-grid mt-1">
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Monthly total</p>
+        <p id="pdfSoftwareMonthly" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Yearly total</p>
+        <p id="pdfSoftwareYearly" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pdf-section">
+    <h2 class="text-xs font-semibold text-slate-900">Cost breakdown</h2>
+    <div class="space-y-1 mt-1 text-xs text-slate-700">
+      <p id="pdfTodayBreakdown"></p>
+      <p id="pdfNodesBreakdown"></p>
+      <p id="pdfCamerasBreakdown"></p>
+      <p id="pdfSoftwareBreakdown"></p>
+    </div>
+  </section>
+
+  <section class="pdf-section pdf-assumptions">
+    <h2 class="text-xs font-semibold text-slate-900">Inputs snapshot</h2>
+    <div class="pdf-grid mt-1">
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Total cameras</p>
+        <p id="pdfCameras" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Smart camera cost (today)</p>
+        <p id="pdfSmartCost" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Standard IP camera cost</p>
+        <p id="pdfIpCost" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Software selection</p>
+        <p id="pdfSoftwareSelection" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+      <div class="pdf-card">
+        <p class="text-[11px] text-slate-500">Billing view</p>
+        <p id="pdfBilling" class="text-sm font-semibold text-slate-900"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="pdf-section">
+    <h2 class="text-xs font-semibold text-slate-900">Assumptions &amp; definitions</h2>
+    <ul class="mt-2 text-[11px] text-slate-700 space-y-1.5">
+      <li>
+        <strong>Total number of cameras:</strong>
+        The total number of camera streams you want to analyze. Each camera counts
+        as one stream.
+      </li>
+      <li>
+        <strong>Standard IP cameras:</strong>
+        Standard IP cameras capture video only. They do not run analytics like
+        license plate recognition inside the camera.
+      </li>
+      <li>
+        <strong>Smart / edge cameras:</strong>
+        Smart or edge cameras process analytics inside the camera itself and
+        typically cost more because each unit includes compute and software.
+      </li>
+      <li>
+        <strong>Savings vs today:</strong>
+        Hardware-only comparison of smart AI cameras today versus Sighthound
+        Compute Node + standard IP cameras (Scenario A only).
+      </li>
+      <li>
+        <strong>Compute Nodes required:</strong>
+        Each node supports a fixed maximum number of cameras. Nodes are rounded up
+        to the next whole number.
+      </li>
+      <li>
+        <strong>Cost per camera:</strong>
+        Average hardware cost across the deployment.
+      </li>
+      <li>
+        <strong>Sighthound software analytics:</strong>
+        Software is priced per camera stream and billed separately from hardware.
+      </li>
+    </ul>
+  </section>
+</section>

@@ -1,0 +1,126 @@
+/* HubSpot form styling - shared between index.html and live.html */
+#hsEmailWrap {
+  margin-top: 1rem;
+}
+#hsEmailWrap .hs-form-html form {
+  font-family: var(--font-body);
+}
+#hsEmailWrap .hs-form-html input[type="text"],
+#hsEmailWrap .hs-form-html input[type="email"],
+#hsEmailWrap .hs-form-html input[type="tel"],
+#hsEmailWrap .hs-form-html textarea,
+#hsEmailWrap .hs-form-html select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5e1;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+#hsEmailWrap .hs-form-html input:focus,
+#hsEmailWrap .hs-form-html textarea:focus,
+#hsEmailWrap .hs-form-html select:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 1px #0ea5e9;
+}
+#hsEmailWrap .hs-form-html label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+}
+#hsEmailWrap .hs-form-html input[type="submit"],
+#hsEmailWrap .hs-form-html button[type="submit"] {
+  background-color: #4f60dc;
+  border: 1px solid #4f60dc;
+  color: #ffffff;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+#hsEmailWrap .hs-form-html input[type="submit"]:hover,
+#hsEmailWrap .hs-form-html button[type="submit"]:hover {
+  background-color: #3d4cb8;
+  border-color: #3d4cb8;
+}
+#hsEmailWrap .hs-form-html .hs-error-msgs {
+  color: #dc2626;
+  font-size: 0.75rem;
+  margin-top: -0.5rem;
+  margin-bottom: 0.5rem;
+}
+#hsEmailWrap .hs-form-html .submitted-message {
+  color: #059669;
+  font-size: 0.875rem;
+  padding: 1rem;
+  background: #ecfdf5;
+  border-radius: 0.5rem;
+}
+
+/* Custom HubSpot form styling */
+#hsEmailWrap .hs-custom-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+#hsEmailWrap .hs-field label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 0.25rem;
+}
+#hsEmailWrap .hs-field label .hs-required {
+  color: #dc2626;
+}
+#hsEmailWrap .hs-field input[type="text"],
+#hsEmailWrap .hs-field input[type="email"] {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+#hsEmailWrap .hs-field input:focus {
+  outline: none;
+  border-color: #4f60dc;
+  box-shadow: 0 0 0 2px rgba(79, 96, 220, 0.2);
+}
+#hsEmailWrap .hs-submit button {
+  background-color: #4f60dc;
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+#hsEmailWrap .hs-submit button:hover {
+  background-color: #3d4cb8;
+}
+#hsEmailWrap .hs-submit button:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+#hsEmailWrap .hs-message {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+#hsEmailWrap .hs-message.hs-success {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+#hsEmailWrap .hs-message.hs-error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
