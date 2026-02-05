@@ -256,26 +256,31 @@
     if (softwareDiff === 0) {
       // Lines are parallel - compare hardware only
       if (hardwareDiff <= 0) {
-        headline = 'Lower cost from day one';
-        subtext = 'Total cost is lower immediately and stays lower over time.';
+        headline = 'You save money from day one';
+        subtext = 'Sighthound costs less upfront and keeps your total spend lower every month.';
       } else {
-        headline = 'No break-even within 60 months';
-        subtext = 'Based on your inputs, current setup remains lower cost over this timeframe.';
+        headline = 'Your current setup costs less over 5 years';
+        subtext = 'Based on these numbers, your existing approach has lower total cost. Sighthound may still offer benefits like unified analytics and easier scaling.';
       }
     } else {
-      const m = hardwareDiff / softwareDiff;
+      var m = hardwareDiff / softwareDiff;
       if (m <= 0) {
         // Sighthound is cheaper from day one
-        headline = 'Lower cost from day one';
-        subtext = 'Total cost is lower immediately and stays lower over time.';
+        headline = 'You save money from day one';
+        subtext = 'Sighthound costs less upfront and keeps your total spend lower every month.';
       } else if (m > 60) {
         // Break-even beyond 60 months
-        headline = 'No break-even within 60 months';
-        subtext = 'Based on your inputs, current setup remains lower cost over this timeframe.';
+        headline = 'Your current setup costs less over 5 years';
+        subtext = 'Based on these numbers, your existing approach has lower total cost. Sighthound may still offer benefits like unified analytics and easier scaling.';
       } else {
         breakEvenMonth = Math.ceil(m);
-        headline = 'Break-even in ' + breakEvenMonth + ' months';
-        subtext = "After this point, Sighthound's total cost remains lower over time.";
+        var years = Math.floor(breakEvenMonth / 12);
+        var months = breakEvenMonth % 12;
+        var timeLabel = years > 0 
+          ? (years + ' year' + (years > 1 ? 's' : '') + (months > 0 ? ' ' + months + ' mo' : ''))
+          : (breakEvenMonth + ' months');
+        headline = 'Sighthound pays for itself in ' + timeLabel;
+        subtext = 'After this point, you save money every month compared to your current setup.';
       }
     }
 
