@@ -1,6 +1,7 @@
 /**
- * HubSpot Email PDF Form Integration (Lightweight)
- * Uses HubSpot v2 API with callbacks. No MutationObserver or aggressive loops.
+ * HubSpot Email PDF Form Integration (Developer Embed)
+ * Uses HubSpot developer embed script with capture-phase submit injection.
+ * Form type doesn't support v2/v3 API, so we use DOM injection.
  */
 (function () {
   'use strict';
@@ -36,68 +37,69 @@
 
   // Guards
   var hsScriptLoaded = false;
-  var hsFormCreated = false;
+  var hsFormInjected = false;
+  var submitListenerAttached = false;
 
   /**
-   * Inject URL into the hidden field (namespaced selector).
+   * Find the hidden field in a container.
    */
-  function setUrl(formEl) {
-    if (!formEl) {
-      log('setUrl: no formEl');
-      return false;
-    }
-    var f = formEl.querySelector('input[name$="/hardware_estimate_url"]');
+  function findField(container) {
+    if (!container) return null;
+    return container.querySelector('input[name$="/hardware_estimate_url"]');
+  }
+
+  /**
+   * Set the field value with maximum persistence.
+   */
+  function setFieldValue(container) {
+    var f = findField(container);
     var v = window.__latestEstimatorUrl || '';
     if (!f) {
-      log('setUrl: field not found');
-      // Log all input names for debugging
-      var inputs = formEl.querySelectorAll('input');
-      var names = [];
-      for (var i = 0; i < inputs.length; i++) {
-        names.push(inputs[i].name || '(no name)');
-      }
-      log('setUrl: available inputs:', names);
+      log('setFieldValue: field not found');
       return false;
     }
     if (!v) {
-      log('setUrl: no URL to inject');
+      log('setFieldValue: no URL');
       return false;
     }
+    // Set in multiple ways for persistence
     f.value = v;
+    f.defaultValue = v;
+    f.setAttribute('value', v);
+    // Dispatch events
     f.dispatchEvent(new Event('input', { bubbles: true }));
     f.dispatchEvent(new Event('change', { bubbles: true }));
-    log('setUrl: SUCCESS - field:', f.name, '= ', v);
-    updateDebugFields('setUrl OK: ' + f.name);
+    log('setFieldValue: SUCCESS -', f.name, '=', v);
     return true;
   }
 
   /**
-   * Retry setUrl with setTimeout (not setInterval). Max 8 attempts.
+   * Retry field injection with setTimeout. Max 10 attempts.
    */
-  function retrySetUrl(formEl, attempt) {
+  function retrySetField(container, attempt) {
     attempt = attempt || 0;
-    if (attempt >= 8) {
-      log('retrySetUrl: gave up after 8 attempts');
-      updateDebugFields('TIMEOUT: field not found after 8 retries');
+    if (attempt >= 10) {
+      log('retrySetField: gave up after 10 attempts');
+      updateDebugFields('TIMEOUT: field not found');
       return;
     }
-    if (setUrl(formEl)) {
-      return; // Success
+    if (setFieldValue(container)) {
+      updateDebugFields('Field set OK');
+      return;
     }
-    log('retrySetUrl: attempt', attempt + 1, 'failed, scheduling retry');
-    updateDebugFields('Retry ' + (attempt + 1) + '/8...');
+    log('retrySetField: attempt', attempt + 1, 'scheduling retry');
+    updateDebugFields('Retry ' + (attempt + 1) + '/10...');
     setTimeout(function () {
-      retrySetUrl(formEl, attempt + 1);
-    }, 150);
+      retrySetField(container, attempt + 1);
+    }, 200);
   }
 
   /**
-   * Update debug UI fields.
+   * Update debug UI.
    */
   function updateDebugFields(status) {
     var wrap = document.getElementById('hsEmailWrap');
-    var form = wrap ? wrap.querySelector('form') : null;
-    var f = form ? form.querySelector('input[name$="/hardware_estimate_url"]') : null;
+    var f = wrap ? findField(wrap) : null;
 
     var elUrl = document.getElementById('hsDebugUrl');
     var elVisible = document.getElementById('hsDebugVisible');
@@ -115,128 +117,87 @@
   }
 
   /**
-   * Load HubSpot v2 script (once globally).
+   * Attach capture-phase submit listener to inject value right before submit.
+   */
+  function attachSubmitListener() {
+    if (submitListenerAttached) return;
+    submitListenerAttached = true;
+
+    document.addEventListener('submit', function (e) {
+      var wrap = document.getElementById('hsEmailWrap');
+      if (!wrap) return;
+      if (!wrap.contains(e.target)) return;
+
+      log('SUBMIT captured - injecting URL');
+      var f = findField(wrap);
+      if (f) {
+        var v = window.__latestEstimatorUrl || '';
+        log('SUBMIT: field before:', f.name, '=', f.value);
+        f.value = v;
+        f.defaultValue = v;
+        f.setAttribute('value', v);
+        log('SUBMIT: field after:', f.name, '=', f.value);
+        updateDebugFields('SUBMIT: Injected!');
+      } else {
+        log('SUBMIT: field not found!');
+        updateDebugFields('SUBMIT: No field!');
+      }
+    }, true); // capture phase
+
+    log('Submit listener attached (capture phase)');
+  }
+
+  /**
+   * Load HubSpot developer embed script.
    */
   function loadHsScript(callback) {
     if (hsScriptLoaded) {
       callback();
       return;
     }
-    if (window.hbspt && window.hbspt.forms) {
-      hsScriptLoaded = true;
-      callback();
-      return;
-    }
     var script = document.createElement('script');
-    script.src = 'https://js.hsforms.net/forms/embed/v2.js';
-    script.charset = 'utf-8';
+    script.src = 'https://js.hsforms.net/forms/embed/developer/3983149.js';
+    script.defer = true;
     script.onload = function () {
       hsScriptLoaded = true;
-      log('HubSpot v2 script loaded');
+      log('HubSpot developer script loaded');
       callback();
     };
     script.onerror = function () {
-      log('HubSpot v2 script failed to load');
+      log('HubSpot script failed to load');
       updateDebugFields('ERROR: script load failed');
     };
     document.head.appendChild(script);
   }
 
   /**
-   * Create HubSpot form with callbacks.
+   * Inject HubSpot form HTML into container.
    */
-  function createHsForm() {
-    if (hsFormCreated) {
-      log('Form already created');
+  function injectFormHtml(container) {
+    if (hsFormInjected) {
+      log('Form already injected');
       return;
     }
-    hsFormCreated = true;
+    hsFormInjected = true;
 
-    // Ensure target div exists
-    var wrap = document.getElementById('hsEmailWrap');
-    var target = document.getElementById('hsEmailTarget');
-    if (!target && wrap) {
-      target = document.createElement('div');
-      target.id = 'hsEmailTarget';
-      wrap.appendChild(target);
-    }
+    // Create the hs-form-html div that the developer script looks for
+    var formDiv = document.createElement('div');
+    formDiv.className = 'hs-form-html';
+    formDiv.setAttribute('data-region', 'na1');
+    formDiv.setAttribute('data-form-id', 'a2c21e81-1915-4b3d-a858-9aadfe08b542');
+    formDiv.setAttribute('data-portal-id', '3983149');
+    container.appendChild(formDiv);
 
-    log('Creating HubSpot form via hbspt.forms.create');
-    updateDebugFields('Creating form...');
+    log('Form HTML injected, waiting for HubSpot to render...');
+    updateDebugFields('Form injected, rendering...');
 
-    // Helper to get raw form element from jQuery-wrapped or raw
-    function getFormElement($form) {
-      var formEl = $form && $form[0] ? $form[0] : $form;
-      if (formEl && formEl.jquery) {
-        formEl = formEl[0];
-      }
-      if (!formEl || !formEl.querySelector) {
-        formEl = document.querySelector('#hsEmailTarget form');
-      }
-      return formEl;
-    }
+    // Attach submit listener
+    attachSubmitListener();
 
-    window.hbspt.forms.create({
-      region: 'na1',
-      portalId: '3983149',
-      formId: 'a2c21e81-1915-4b3d-a858-9aadfe08b542',
-      target: '#hsEmailTarget',
-
-      onFormReady: function ($form) {
-        log('onFormReady callback fired');
-        var formEl = getFormElement($form);
-        log('onFormReady: formEl=', formEl);
-        updateDebugFields('Form ready, setting initial URL...');
-        // Set DOM value for visual consistency (optional)
-        retrySetUrl(formEl, 0);
-      },
-
-      // KEY: This callback fires BEFORE HubSpot serializes/sends the payload.
-      // We inject the URL directly into submissionValues, bypassing DOM entirely.
-      onBeforeFormSubmit: function ($form, submissionValues) {
-        log('onBeforeFormSubmit callback fired');
-        log('onBeforeFormSubmit: submissionValues BEFORE:', JSON.stringify(submissionValues));
-
-        var url = window.__latestEstimatorUrl || '';
-        if (!url) {
-          log('onBeforeFormSubmit: WARNING - no URL to inject');
-          updateDebugFields('SUBMIT: No URL available!');
-          return;
-        }
-
-        // Find the hardware_estimate_url field in submissionValues
-        // submissionValues is an array of {name, value} objects
-        var found = false;
-        for (var i = 0; i < submissionValues.length; i++) {
-          var field = submissionValues[i];
-          // Match the namespaced field (ends with /hardware_estimate_url)
-          if (field.name && field.name.indexOf('hardware_estimate_url') !== -1) {
-            log('onBeforeFormSubmit: Found field', field.name, 'current value:', field.value);
-            field.value = url;
-            log('onBeforeFormSubmit: Set field', field.name, '=', url);
-            found = true;
-            break;
-          }
-        }
-
-        // If field wasn't in submissionValues, add it (unlikely but safe)
-        if (!found) {
-          log('onBeforeFormSubmit: Field not in submissionValues, adding it');
-          submissionValues.push({
-            name: 'hardware_estimate_url',
-            value: url
-          });
-        }
-
-        log('onBeforeFormSubmit: submissionValues AFTER:', JSON.stringify(submissionValues));
-        updateDebugFields('SUBMIT: URL injected into payload!');
-      },
-
-      onFormSubmit: function ($form) {
-        log('onFormSubmit callback fired (after payload sent)');
-        updateDebugFields('SUBMIT: Complete');
-      }
-    });
+    // Start retry loop to set field once form renders
+    setTimeout(function () {
+      retrySetField(container, 0);
+    }, 500);
   }
 
   /**
@@ -263,14 +224,14 @@
     // Scroll into view
     wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // Load script and create form (only once)
+    // Load script then inject form
     loadHsScript(function () {
-      createHsForm();
+      injectFormHtml(wrap);
     });
   }
 
   // Expose globally
   window.showHsEmailForm = showEmailForm;
 
-  log('hs-email.js initialized (lightweight v2)');
+  log('hs-email.js initialized (developer embed)');
 })();
