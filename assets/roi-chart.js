@@ -254,6 +254,13 @@
     ctx.stroke();
     ctx.fillStyle = COLORS.text;
     ctx.fillText('Sighthound', legendX + 25, legendY);
+
+    // Store PNG for PDF export
+    try {
+      window.__ROI_PNG__ = canvas.toDataURL('image/png');
+    } catch (e) {
+      // Canvas tainted or other error - ignore
+    }
   }
 
   return {

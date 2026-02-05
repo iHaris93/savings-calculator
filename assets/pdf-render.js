@@ -214,14 +214,26 @@
         setText('pdfRoiHeadline', roi.headline || '');
         setText('pdfRoiSubtext', roi.subtext || '');
 
-        // Render chart if available
+        // Render chart as image if PNG available, otherwise show fallback
         var pdfRoiChart = targetEl.querySelector('#pdfRoiChart');
-        if (pdfRoiChart && typeof window !== 'undefined' && window.SighthoundRoiChart) {
-          // Ensure canvas has dimensions before rendering
-          pdfRoiChart.style.display = 'block';
-          pdfRoiChart.style.width = '100%';
-          pdfRoiChart.style.height = '160px';
-          window.SighthoundRoiChart.render(pdfRoiChart, roi);
+        if (pdfRoiChart) {
+          if (typeof window !== 'undefined' && window.__ROI_PNG__) {
+            // Replace canvas with image
+            var img = document.createElement('img');
+            img.src = window.__ROI_PNG__;
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            img.style.maxHeight = '160px';
+            img.alt = 'ROI Timeline Chart';
+            pdfRoiChart.parentNode.replaceChild(img, pdfRoiChart);
+          } else {
+            // Fallback: hide canvas and show note
+            pdfRoiChart.style.display = 'none';
+            var note = document.createElement('p');
+            note.className = 'text-[11px] text-slate-500';
+            note.textContent = 'ROI chart is available in the interactive tool.';
+            pdfRoiChart.parentNode.insertBefore(note, pdfRoiChart);
+          }
         }
       } else {
         roiSection.style.display = 'none';
