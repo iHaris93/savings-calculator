@@ -1,0 +1,2314 @@
+#!/usr/bin/env python3
+"""
+run - Cross-platform CLI tool for Deft framework v0.3.7
+A layered framework for AI-assisted development
+
+Works on: macOS, Linux, Windows, FreeBSD
+Requires: Python 3.6+
+Optional: rich (for enhanced output and better UX)
+"""
+
+import sys
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from datetime import datetime
+from typing import List, Optional
+
+VERSION = "0.4.2"
+
+# Try to import rich for enhanced experience
+try:
+    from rich.console import Console
+    from rich.prompt import Prompt, Confirm
+    from rich.panel import Panel
+    from rich.markdown import Markdown
+    from rich.text import Text
+    HAS_RICH = True
+    console = Console()
+except ImportError:
+    HAS_RICH = False
+    console = None
+    # Fall back to readline on Unix for arrow key support
+    try:
+        import readline  # Enable history and arrow keys on Unix
+    except ImportError:
+        pass  # Windows: basic input() still works
+
+# Try to import prompt_toolkit
+try:
+    import prompt_toolkit
+    HAS_PROMPT_TOOLKIT = True
+except ImportError:
+    HAS_PROMPT_TOOLKIT = False
+
+# Try to import textual for TUI mode
+try:
+    from textual.app import App, ComposeResult
+    from textual.screen import Screen
+    from textual.widgets import Header, Footer, Button, Label, Input, Select, OptionList, Static, MarkdownViewer, Checkbox
+    from textual.widgets._option_list import Option
+    from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
+    HAS_TEXTUAL = True
+except ImportError:
+    HAS_TEXTUAL = False
+
+# Output helpers
+def print_header(text: str):
+    """Print main command header"""
+    if HAS_RICH:
+        console.print(Panel(f"[bold cyan]{text}[/bold cyan]", border_style="cyan"))
+    else:
+        print(f"\n{'=' * 60}")
+        print(f"  {text}")
+        print('=' * 60)
+
+def print_section(text: str):
+    """Print section header within a command"""
+    if HAS_RICH:
+        console.print(Markdown(f"## {text}"))
+    else:
+        print(f"\n{'-' * 60}")
+        print(f"  {text}")
+        print('-' * 60)
+
+def print_info(msg: str):
+    """Print info message"""
+    if HAS_RICH:
+        console.print(f"[blue]ℹ[/blue] {msg}")
+    else:
+        print(f"ℹ {msg}")
+
+def print_success(msg: str):
+    """Print success message"""
+    if HAS_RICH:
+        console.print(f"[green]✓[/green] {msg}")
+    else:
+        print(f"✓ {msg}")
+
+def print_warn(msg: str):
+    """Print warning message"""
+    if HAS_RICH:
+        console.print(f"[yellow]⚠[/yellow] {msg}")
+    else:
+        print(f"⚠ {msg}")
+
+def print_error(msg: str):
+    """Print error message"""
+    if HAS_RICH:
+        console.print(f"[red]✗[/red] {msg}")
+    else:
+        print(f"✗ {msg}")
+
+# Legacy aliases for backward compatibility
+info = print_info
+success = print_success
+warn = print_warn
+error = print_error
+
+def get_script_dir() -> Path:
+    """Get the directory where this script is located"""
+    return Path(__file__).parent.absolute()
+
+def usage():
+    """Print usage information"""
+    hint = ""
+    if not HAS_RICH:
+        # Get the Python executable path for accurate install command
+        python_exe = sys.executable
+        stdlib_path = Path(sys.base_prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        is_externally_managed = (stdlib_path / "EXTERNALLY-MANAGED").exists()
+        
+        install_cmd = f"{python_exe} -m pip install"
+        if is_externally_managed:
+            install_cmd += " --break-system-packages"
+        install_cmd += " rich"
+        
+        hint = f"\n💡 Tip: Install rich for enhanced output and better UX:\n   {install_cmd}\n"
+    
+    tui_hint = ""
+    if HAS_TEXTUAL:
+        tui_hint = "       run                     # Launch TUI wizard (no args)\n       run tui                  # Launch TUI wizard\n       run wizard               # Launch TUI wizard\n       "
+    
+    if HAS_RICH:
+        print_header(f"Deft CLI v{VERSION}")
+        tui_section = "[bold]TUI Mode:[/bold]\n  run / run tui / run wizard    Launch interactive wizard\n\n" if HAS_TEXTUAL else ""
+        console.print(f"""
+{tui_section}[bold]Usage:[/bold] run <command> [options]
+       run -h, --help, -help    # Show this help
+       python run <command> [options]       # If not executable
+       python3 run <command> [options]      # If not executable
+
+[bold cyan]Commands:[/bold cyan]
+  [green]bootstrap[/green]       Set up your user preferences (user.md)
+  [green]project[/green]         Create/update project configuration (project.md)
+  [green]spec[/green]            Generate project specification (interactive interview)
+  [green]install[/green]         Install deft framework in a project directory
+  [green]reset[/green]           Reset configuration files to default state
+  [green]validate[/green]        Validate deft configuration files
+  [green]update[/green]          Update deft framework to latest version
+  [green]doctor[/green]          Check system dependencies and configuration
+  [green]help[/green]            Show this help message
+
+[bold cyan]Examples:[/bold cyan]
+  run                        # Launch TUI wizard (if textual installed)
+  run bootstrap              # First-time setup
+  run project                # Configure current project
+  run spec                   # Generate SPECIFICATION.md
+  run install ~/my-project   # Install deft in a project
+  run reset                  # Reset config files (interactive)
+  run reset --all            # Reset all config files (no prompts)
+  run validate               # Check configuration is valid
+
+For more information: [link]https://github.com/visionik/deft[/link]
+""")
+    else:
+        tui_section = f"TUI Mode:\n{tui_hint}\n" if HAS_TEXTUAL else ""
+        print(f"""Deft CLI v{VERSION}{hint}
+
+{tui_section}Usage: run <command> [options]
+       run -h, --help, -help    # Show this help
+       python run <command> [options]       # If not executable
+       python3 run <command> [options]      # If not executable
+
+Commands:
+  bootstrap       Set up your user preferences (user.md)
+  project         Create/update project configuration (project.md)
+  spec            Generate project specification (interactive interview)
+  install         Install deft framework in a project directory
+  reset           Reset configuration files to default state
+  validate        Validate deft configuration files
+  update          Update deft framework to latest version
+  doctor          Check system dependencies and configuration
+  help            Show this help message
+
+Examples:
+  run                        # Launch TUI wizard (if textual installed)
+  run bootstrap              # First-time setup
+  run project                # Configure current project
+  run spec                   # Generate SPECIFICATION.md
+  run install ~/my-project   # Install deft in a project
+  run reset                  # Reset config files (interactive)
+  run reset --all            # Reset all config files (no prompts)
+  run validate               # Check configuration is valid
+
+For more information: https://github.com/visionik/deft
+""")
+
+def ask_input(prompt_text: str, default: str = "") -> str:
+    """Read user input with optional default
+    
+    Args:
+        prompt_text: The prompt to display
+        default: Default value if user presses Enter
+    
+    Returns:
+        User input or default value
+    """
+    try:
+        # Priority: prompt_toolkit (best editing) > rich > basic input
+        if HAS_PROMPT_TOOLKIT:
+            from prompt_toolkit import prompt as pt_prompt
+            from prompt_toolkit.formatted_text import HTML
+            # Add colored prefix if rich is also available
+            if HAS_RICH:
+                display_prompt = HTML(f'<ansibrightcyan>?</ansibrightcyan> {prompt_text}: ')
+            else:
+                display_prompt = prompt_text + ": "
+            
+            value = pt_prompt(display_prompt, default=default)
+            return value if value else default
+        elif HAS_RICH:
+            # Add colored question mark prefix
+            formatted_prompt = f"[cyan]?[/cyan] {prompt_text}"
+            value = Prompt.ask(formatted_prompt, default=default if default else None)
+            return value if value else default
+        else:
+            # Fall back to basic input() with readline support (if available on Unix)
+            if default:
+                value = input(f"{prompt_text} [{default}]: ")
+            else:
+                value = input(f"{prompt_text}: ")
+            return value if value else default
+    except (EOFError, KeyboardInterrupt):
+        return default
+
+def ask_choice(prompt_text: str, choices: List[str], default: str = None) -> str:
+    """Read user choice from list
+    
+    Args:
+        prompt_text: The prompt to display
+        choices: List of valid choices
+        default: Default choice
+    
+    Returns:
+        User's choice
+    """
+    try:
+        if HAS_RICH:
+            # Add colored question mark prefix
+            formatted_prompt = f"[cyan]?[/cyan] {prompt_text}"
+            return Prompt.ask(formatted_prompt, choices=choices, default=default)
+        else:
+            # Fallback: show numbered list
+            print(f"\n{prompt_text}")
+            for i, choice in enumerate(choices, 1):
+                print(f"  {i}. {choice}")
+            while True:
+                ans = input("Enter number: ")
+                try:
+                    idx = int(ans) - 1
+                    if 0 <= idx < len(choices):
+                        return choices[idx]
+                except ValueError:
+                    pass
+                print("Invalid choice, try again.")
+    except (EOFError, KeyboardInterrupt):
+        return default if default else choices[0]
+
+def ask_confirm(prompt_text: str, default: bool = False) -> bool:
+    """Read yes/no confirmation
+    
+    Args:
+        prompt_text: The prompt to display
+        default: Default value
+    
+    Returns:
+        True if user confirms, False otherwise
+    """
+    try:
+        # Priority: prompt_toolkit > rich > basic input
+        if HAS_PROMPT_TOOLKIT:
+            from prompt_toolkit import prompt as pt_prompt
+            from prompt_toolkit.formatted_text import HTML
+            # Add colored prefix if rich is also available
+            suffix = " (Y/n): " if default else " (y/N): "
+            if HAS_RICH:
+                display_prompt = HTML(f'<ansibrightcyan>?</ansibrightcyan> {prompt_text}{suffix}')
+            else:
+                display_prompt = prompt_text + suffix
+            
+            response = pt_prompt(display_prompt, default="")
+            if not response:
+                return default
+            return response.strip().lower() in ('y', 'yes')
+        elif HAS_RICH:
+            # Add colored question mark prefix
+            formatted_prompt = f"[cyan]?[/cyan] {prompt_text}"
+            return Confirm.ask(formatted_prompt, default=default)
+        else:
+            suffix = " (Y/n) " if default else " (y/N) "
+            response = input(f"{prompt_text}{suffix}")
+            if not response:
+                return default
+            return response.strip().lower() in ('y', 'yes')
+    except (EOFError, KeyboardInterrupt):
+        return default
+
+# Legacy aliases for backward compatibility
+read_input = ask_input
+read_yn = ask_confirm
+
+def cmd_bootstrap(args: List[str]):
+    """Bootstrap command - set up user.md"""
+    print_header(f"Deft v{VERSION} - Bootstrap")
+    print()
+    
+    script_dir = get_script_dir()
+    user_file = script_dir / "core" / "user.md"
+    
+    # Check if file exists
+    if user_file.exists() and "--force" not in args:
+        warn("user.md already exists. Use --force to overwrite.")
+        if not read_yn("Overwrite existing user.md?"):
+            return 0
+    
+    print()
+    print_section("User Preferences Setup")
+    
+    # Gather user information
+    user_name = read_input("Your name (how AI should address you)")
+    coverage = read_input("Default coverage threshold (default: 85%)", "85")
+    
+    print()
+    print_section("Programming Languages")
+    info("Select your primary programming languages (comma-separated):")
+    print("  1. Python")
+    print("  2. Go")
+    print("  3. TypeScript")
+    print("  4. C++")
+    print("  5. Other")
+    lang_selection = read_input("Selection (e.g., 1,3)")
+    
+    # Map selections to language names
+    lang_map = {
+        "1": "Python",
+        "2": "Go",
+        "3": "TypeScript",
+        "4": "C++",
+        "5": "Other"
+    }
+    
+    lang_nums = [s.strip() for s in lang_selection.split(',')]
+    languages = []
+    for num in lang_nums:
+        if num in lang_map:
+            languages.append(f"- {lang_map[num]}")
+    
+    languages_str = '\n'.join(languages) if languages else "- (None specified)"
+    
+    print()
+    print_section("Custom Rules")
+    custom_rules = read_input("Any custom rules or preferences (optional, press Enter to skip)")
+    
+    print()
+    print_section("Experimental Rules")
+    info("The meta/ directory contains experimental guidelines:")
+    info("  • SOUL.md       - Strategic context and purpose-driven guidance")
+    info("  • morals.md     - Ethical AI development principles")
+    info("  • code-field.md - Advanced field theory for code architecture")
+    print()
+    
+    use_soul = read_yn("Use meta/SOUL.md? (Strategic context guidelines)")
+    use_morals = read_yn("Use meta/morals.md? (Ethical AI principles)")
+    use_code_field = read_yn("Use meta/code-field.md? (Advanced architecture theory)")
+    
+    # Build experimental rules section
+    experimental_rules = []
+    if use_soul:
+        experimental_rules.append("- ! Use meta/SOUL.md for strategic context and purpose-driven guidance")
+    if use_morals:
+        experimental_rules.append("- ! Use meta/morals.md for ethical AI development principles")
+    if use_code_field:
+        experimental_rules.append("- ~ Use meta/code-field.md for advanced architecture patterns")
+    
+    experimental_section = ""
+    if experimental_rules:
+        experimental_section = "\n## Experimental Rules\n\n" + "\n".join(experimental_rules)
+    
+    # Generate user.md
+    user_content = f"""# User Preferences
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**Rule Precedence**: This file has HIGHEST precedence - overrides all other deft rules.
+
+## Name
+
+Address the user as: **{user_name}**
+
+## Default Standards
+
+**Coverage**: ! ≥{coverage}% test coverage for all projects (unless project.md specifies otherwise)
+
+**Primary Languages**:
+{languages_str}
+
+## Custom Rules
+
+{custom_rules if custom_rules else "No custom rules defined yet."}
+{experimental_section}
+
+## Workflow Preferences
+
+- ~ Use task-based automation (Taskfile)
+- ! Always run `task check` before committing
+- ~ Follow Conventional Commits
+
+## AI Behavior
+
+- ~ Be direct and concise
+- ~ Proactively suggest improvements
+- ! Explain tradeoffs for major decisions
+
+---
+
+**Note**: You can edit this file anytime to update your preferences.
+**See**: [../main.md](../main.md) for framework overview.
+"""
+    
+    user_file.parent.mkdir(parents=True, exist_ok=True)
+    user_file.write_text(user_content, encoding='utf-8')
+    
+    success(f"Created user.md at {user_file}")
+    print()
+    info("user.md defines your personal preferences and default standards.")
+    print()
+    
+    # Always offer to configure project settings
+    print()
+    print_section("Next Steps")
+    if read_yn("Would you like to run 'run project' now?"):
+        print()
+        return cmd_project([])
+    else:
+        print()
+        info("You can run 'run project' later to configure your project")
+        return 0
+
+def cmd_project(args: List[str]):
+    """Project command - configure project.md"""
+    print_header(f"Deft v{VERSION} - Project Configuration")
+    print()
+    info("This command creates project.md, which defines YOUR project's specifics:")
+    info("  • Tech stack and programming language")
+    info("  • Project type (CLI, API, Web App, Library, etc.)")
+    info("  • Quality standards (test coverage thresholds)")
+    info("  • Workflow commands (task check, task test, etc.)")
+    print()
+    info("This file tells AI assistants how to build and maintain YOUR project.")
+    info("It works alongside the general Deft guidelines in ./deft/")
+    print()
+    
+    project_file = Path("./deft/core/project.md")
+    
+    # Check if we're in a project directory
+    if not Path("./deft").is_dir():
+        warn("No ./deft directory found. Run 'run install' first or specify a project directory.")
+        if read_yn("Install deft in current directory?"):
+            cmd_install(["."])
+        else:
+            return 1
+    
+    # Gather project information
+    project_name = read_input("Project name")
+    
+    print()
+    info("Select project type (comma-separated if multiple):")
+    print("  1. CLI (Command-line interface)")
+    print("  2. TUI (Terminal UI)")
+    print("  3. REST API")
+    print("  4. Web App")
+    print("  5. Library")
+    print("  6. Other")
+    type_selection = read_input("Selection")
+    
+    type_map = {
+        "1": "CLI",
+        "2": "TUI",
+        "3": "REST API",
+        "4": "Web App",
+        "5": "Library",
+        "6": "Other"
+    }
+    
+    type_nums = [s.strip() for s in type_selection.split(',')]
+    project_types = []
+    custom_type = ""
+    
+    for num in type_nums:
+        if num == "6":
+            custom_type = read_input("Enter custom project type")
+            project_types.append(custom_type)
+        elif num in type_map:
+            project_types.append(type_map[num])
+    
+    project_types_str = ", ".join(project_types)
+    
+    print()
+    info("Select primary programming language:")
+    print("  1. Python")
+    print("  2. Go")
+    print("  3. TypeScript")
+    print("  4. C++")
+    lang_num = read_input("Selection")
+    
+    plang_map = {
+        "1": "Python",
+        "2": "Go",
+        "3": "TypeScript",
+        "4": "C++"
+    }
+    primary_lang = plang_map.get(lang_num, "Python")
+    
+    print()
+    proj_coverage = read_input("Coverage threshold (default: 85%)", "85")
+    tech_stack = read_input("Tech stack details (e.g., 'Flask + SQLAlchemy' or 'React + Next.js')")
+    
+    # Generate project.md
+    tech_stack_str = f" - {tech_stack}" if tech_stack else ""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    project_content = f"""# {project_name} Project Guidelines
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**⚠️ See also**: [../main.md](../main.md) | [../languages/{primary_lang.lower()}.md](../languages/{primary_lang.lower()}.md)
+
+## Project Configuration
+
+**Tech Stack**: {project_types_str} using {primary_lang}{tech_stack_str}
+
+## Workflow
+
+```bash
+task check         # Pre-commit (fmt, lint, test, test:coverage)
+task test:coverage # Coverage (≥{proj_coverage}%)
+task build         # Build project
+task clean         # Clean artifacts
+```
+
+## Secrets
+
+```bash
+ls secrets/
+# Add your secrets to secrets/ directory
+# Use .example files as templates
+```
+
+## Standards
+
+**Quality:**
+- ! Run `task check` before every commit
+- ! Achieve ≥{proj_coverage}% coverage overall + per-module
+- ! Store secrets in `secrets/` dir
+- ~ Provide `.example` templates for secrets
+
+**Telemetry:**
+- ~ Structured logging (see [../tools/telemetry.md](../tools/telemetry.md))
+- ~ Sentry.io for error tracking
+- ? Distributed tracing for complex workflows
+
+## Project-Specific Rules
+
+(Add your custom rules here)
+
+---
+
+**Generated by**: run v{VERSION}
+**Date**: {today}
+"""
+    
+    project_file.parent.mkdir(parents=True, exist_ok=True)
+    project_file.write_text(project_content, encoding='utf-8')
+    
+    success(f"Created project.md at {project_file}")
+    print()
+    info("project.md defines your project's tech stack, workflow, and quality standards.")
+    print()
+    
+    # Prompt to run spec generation
+    print()
+    print_section("Next Steps")
+    info("Generate a detailed specification via AI interview")
+    info("The 'spec' command creates PRD.md with your project requirements,")
+    info("which an AI assistant will use to interview you and generate SPECIFICATION.md.")
+    print()
+    if read_yn("Would you like to run 'run spec' now?"):
+        print()
+        return cmd_spec([])
+    else:
+        print()
+        info("You can run 'run spec' later to generate your specification.")
+        return 0
+
+def cmd_spec(args: List[str]):
+    """Spec command - generate specification via interview"""
+    print_header(f"Deft v{VERSION} - Specification Generator")
+    print()
+    info("This command creates PRD.md (Product Requirements Document) with:")
+    info("  • Your project's core features and requirements")
+    info("  • An AI interview template to drill into details")
+    print()
+    info("After creating PRD.md, you'll:")
+    info("  1. Give PRD.md to your AI assistant")
+    info("  2. The AI conducts an in-depth interview about requirements")
+    info("  3. The AI generates SPECIFICATION.md with full implementation plan")
+    info("  4. The AI can then implement the spec")
+    print()
+    info("This ensures nothing important is overlooked before coding starts.")
+    print()
+    
+    prd_file = Path("./PRD.md")
+    
+    if prd_file.exists() and "--force" not in args:
+        warn("PRD.md already exists. Use --force to overwrite.")
+        return 1
+    
+    # Try to read project name from project.md
+    project_file = Path("./deft/core/project.md")
+    spec_name = ""
+    if project_file.exists():
+        try:
+            content = project_file.read_text(encoding='utf-8')
+            # Extract project name from first heading (e.g., "# MyProject Project Guidelines")
+            for line in content.split('\n'):
+                if line.startswith('# ') and 'Project Guidelines' in line:
+                    spec_name = line.replace('# ', '').replace(' Project Guidelines', '').strip()
+                    break
+        except:
+            pass
+    
+    if spec_name:
+        info(f"Project name from project.md: {spec_name}")
+        if not read_yn("Use this name?"):
+            spec_name = read_input("Project name")
+    else:
+        spec_name = read_input("Project name")
+    
+    spec_desc = read_input("Brief description (1-2 sentences)")
+    
+    print()
+    info("Enter project features (one per line, empty line to finish):")
+    features = []
+    while True:
+        feature = read_input("  Feature")
+        if not feature:
+            break
+        features.append(feature)
+    
+    # Build feature list
+    feature_list = '\n'.join([f"{i+1}. {f}" for i, f in enumerate(features)])
+    
+    # Read the make-spec template
+    script_dir = get_script_dir()
+    template_file = script_dir / "templates" / "make-spec.md"
+    
+    if not template_file.exists():
+        error(f"Template file not found: {template_file}")
+        return 1
+    
+    template_content = template_file.read_text(encoding='utf-8')
+    
+    # Replace placeholders
+    template_content = template_content.replace("[project name]", spec_name)
+    template_content = template_content.replace(f"I want to build [project name]", f"I want to build {spec_name}")
+    
+    # Generate PRD
+    today = datetime.now().strftime("%Y-%m-%d")
+    full_path = Path.cwd() / prd_file
+    
+    prd_content = f"""# Product Requirements Document: {spec_name}
+
+**Generated**: {today}
+**Status**: Ready for AI Interview
+
+## Initial Input
+
+**Project Description**: {spec_desc}
+
+**I want to build {spec_name} that has the following features:**
+{feature_list}
+---
+
+{template_content}
+"""
+    
+    prd_file.write_text(prd_content, encoding='utf-8')
+    
+    success(f"Created PRD.md at {prd_file}")
+    info("Next steps:")
+    info(f"  1. Open your AI assistant (Claude, Warp.dev, etc.)")
+    info(f"  2. Ask your AI to read and run {full_path}")
+    info(f"  3. The AI will conduct a detailed interview based on the template")
+    info(f"  4. AI will generate the final SPECIFICATION.md")
+    info(f"  5. You can review the SPECIFICATION.md if you want")
+    info(f"  6. Ask your AI to implement {Path.cwd()}/SPECIFICATION.md")
+    info(f"  7. Your AI may ask you some questions like 'should I continue', just say yes or please continue")
+    return 0
+
+def cmd_install(args: List[str]):
+    """Install command - install deft framework in a project"""
+    target_dir = Path(args[0]) if args else Path(".")
+    
+    print_header(f"Deft v{VERSION} - Installation")
+    print()
+    info("This command installs the Deft framework in your project directory.")
+    info("It will create:")
+    info("  • ./deft/        - Framework files (guidelines, templates, references)")
+    info("  • ./secrets/        - Directory for API keys and credentials (.gitignored)")
+    info("  • ./docs/           - Project documentation")
+    info("  • Taskfile.yml      - Task automation config (if not present)")
+    info("  • .gitignore        - Ensures secrets aren't committed (if not present)")
+    print()
+    info(f"Target directory: {target_dir.absolute()}")
+    print()
+    
+    if not target_dir.exists():
+        error(f"Directory does not exist: {target_dir}")
+        return 1
+    
+    # Change to target directory
+    original_dir = Path.cwd()
+    os.chdir(target_dir)
+    
+    try:
+        deft_dir = Path("./deft")
+        
+        # Check if deft already exists
+        already_installed = deft_dir.exists()
+        if already_installed:
+            warn("Deft already installed in this directory.")
+            if not read_yn("Reinstall?"):
+                # Still offer to run project even if not reinstalling
+                print()
+                print_section("Next Steps")
+                if read_yn("Would you like to run 'run project' now?"):
+                    print()
+                    return cmd_project([])
+                else:
+                    return 0
+        
+        # Copy deft framework
+        info("Copying deft framework...")
+        script_dir = get_script_dir()
+        
+        if deft_dir.exists():
+            shutil.rmtree(deft_dir)
+        
+        shutil.copytree(script_dir, deft_dir)
+        
+        # Create project-specific files
+        Path("secrets").mkdir(exist_ok=True)
+        Path("docs").mkdir(exist_ok=True)
+        Path("secrets/.gitkeep").touch()
+        
+        # Create .gitignore for secrets
+        gitignore = Path(".gitignore")
+        if not gitignore.exists():
+            gitignore.write_text("secrets/*\n!secrets/.gitkeep\n!secrets/*.example\n", encoding='utf-8')
+        
+        # Create basic Taskfile if it doesn't exist
+        taskfile = Path("Taskfile.yml")
+        if not taskfile.exists():
+            taskfile_content = """version: '3'
+
+tasks:
+  default:
+    desc: List all tasks
+    cmds:
+      - task --list
+    silent: true
+
+  check:
+    desc: Run all pre-commit checks
+    cmds:
+      - echo "Add your check commands here"
+      - task fmt
+      - task lint
+      - task test
+
+  fmt:
+    desc: Format code
+    cmds:
+      - echo "Add your format command here"
+
+  lint:
+    desc: Lint code
+    cmds:
+      - echo "Add your lint command here"
+
+  test:
+    desc: Run tests
+    cmds:
+      - echo "Add your test command here"
+
+  test:coverage:
+    desc: Run tests with coverage
+    cmds:
+      - echo "Add your coverage command here"
+"""
+            taskfile.write_text(taskfile_content, encoding='utf-8')
+            success("Created Taskfile.yml")
+        
+        success("Deft installed successfully!")
+        print()
+        
+        # Prompt to run project configuration
+        print_section("Next Steps")
+        if read_yn("Would you like to run 'run project' now?"):
+            print()
+            return cmd_project([])
+        else:
+            print()
+            info("You can run these commands later:")
+            info("  ./deft/run project     # Configure this project")
+            info("  ./deft/run bootstrap   # Set up user preferences")
+            return 0
+    
+    finally:
+        os.chdir(original_dir)
+
+def cmd_validate(args: List[str]):
+    """Validate command - check deft configuration"""
+    info("Validating Deft configuration...")
+    print()
+    
+    script_dir = get_script_dir()
+    errors = 0
+    
+    # Check for required files
+    required_files = [
+        "main.md",
+        "core/user.md",
+        "coding/coding.md",
+        "REFERENCES.md"
+    ]
+    
+    for file in required_files:
+        filepath = script_dir / file
+        if filepath.exists():
+            success(f"Found: {file}")
+        else:
+            error(f"Missing: {file}")
+            errors += 1
+    
+    # Check for at least one language file
+    lang_dir = script_dir / "languages"
+    if lang_dir.exists() and list(lang_dir.glob("*.md")):
+        success("Language files present")
+    else:
+        error("No language files found in languages/")
+        errors += 1
+    
+    # Check for broken links (simple check)
+    info("Checking for common broken links...")
+    # Note: Python implementation could be more sophisticated
+    
+    print()
+    if errors == 0:
+        success("Validation passed! Deft configuration is valid.")
+        return 0
+    else:
+        error(f"Validation failed with {errors} error(s).")
+        return 1
+
+def cmd_doctor(args: List[str]):
+    """Doctor command - check system dependencies"""
+    info("Deft Doctor - Checking system...")
+    print()
+    
+    warnings = 0
+    
+    # Check for required tools
+    def check_command(cmd: str, name: str, required: bool = False):
+        nonlocal warnings
+        if shutil.which(cmd):
+            success(f"{name} is installed")
+        else:
+            if required:
+                error(f"{name} not found - required")
+            else:
+                warn(f"{name} not found - install from https://taskfile.dev" if cmd == "task" 
+                     else f"{name} not found")
+                warnings += 1
+    
+    check_command("task", "task (Taskfile)")
+    check_command("git", "git", required=True)
+    check_command("python3", "python3")
+    check_command("go", "go")
+    check_command("node", "node")
+    
+    # Check directory structure
+    print()
+    info("Checking Deft structure...")
+    
+    script_dir = get_script_dir()
+    expected_dirs = ["core", "languages", "interfaces", "tools", "swarm", "templates", "meta"]
+    
+    for dir_name in expected_dirs:
+        dir_path = script_dir / dir_name
+        if dir_path.is_dir():
+            success(f"Directory: {dir_name}/")
+        else:
+            warn(f"Missing directory: {dir_name}/")
+            warnings += 1
+    
+    print()
+    if warnings == 0:
+        success("System check passed!")
+    else:
+        warn(f"System check completed with {warnings} warning(s).")
+    
+    return 0
+
+def cmd_update(args: List[str]):
+    """Update command - update deft framework"""
+    info("Deft update functionality not yet implemented")
+    warn("Manual update: Replace deft directory with latest version from repository")
+    return 0
+
+def cmd_reset(args: List[str]):
+    """Reset command - reset configuration files to default/empty state"""
+    print_header(f"Deft v{VERSION} - Reset")
+    print()
+    info("This command resets deft configuration files to their default state.")
+    info("You can choose which files to reset:")
+    print()
+    info("  • user.md          - Your personal preferences (in ./deft/core/)")
+    info("  • project.md        - Project configuration (in ./deft/core/)")
+    info("  • PRD.md            - Product requirements document (in current directory)")
+    info("  • SPECIFICATION.md  - Generated specification (in current directory)")
+    print()
+    
+    # Check what exists
+    script_dir = get_script_dir()
+    user_file = script_dir / "core" / "user.md"
+    project_file = Path("./deft/core/project.md")
+    prd_file = Path("./PRD.md")
+    spec_file = Path("./SPECIFICATION.md")
+    
+    files_to_reset = []
+    
+    # Check each file and ask if user wants to reset it
+    if "--all" in args:
+        # Reset all without asking
+        if user_file.exists():
+            files_to_reset.append(("user.md", user_file, True))
+        if project_file.exists():
+            files_to_reset.append(("project.md", project_file, False))
+        if prd_file.exists():
+            files_to_reset.append(("PRD.md", prd_file, False))
+        if spec_file.exists():
+            files_to_reset.append(("SPECIFICATION.md", spec_file, False))
+    else:
+        # Ask for each file
+        if user_file.exists():
+            if read_yn("Reset user.md to default template?"):
+                files_to_reset.append(("user.md", user_file, True))
+        
+        if project_file.exists():
+            if read_yn("Delete project.md?"):
+                files_to_reset.append(("project.md", project_file, False))
+        
+        if prd_file.exists():
+            if read_yn("Delete PRD.md?"):
+                files_to_reset.append(("PRD.md", prd_file, False))
+        
+        if spec_file.exists():
+            if read_yn("Delete SPECIFICATION.md?"):
+                files_to_reset.append(("SPECIFICATION.md", spec_file, False))
+    
+    if not files_to_reset:
+        print()
+        info("No files to reset.")
+        return 0
+    
+    # Confirm
+    print()
+    warn("The following files will be reset/deleted:")
+    for name, _, _ in files_to_reset:
+        warn(f"  • {name}")
+    print()
+    
+    if "--all" not in args and not read_yn("Are you sure you want to continue?"):
+        info("Reset cancelled.")
+        return 0
+    
+    # Perform reset
+    print()
+    for name, filepath, reset_to_default in files_to_reset:
+        if reset_to_default:
+            # Reset user.md to default template
+            default_content = """# User Preferences
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**Rule Precedence**: This file has HIGHEST precedence - overrides all other deft rules.
+
+## Name
+
+Address the user as: **(Your Name)**
+
+## Default Standards
+
+**Coverage**: ! ≥85% test coverage for all projects (unless project.md specifies otherwise)
+
+**Primary Languages**:
+- (Add your languages here)
+
+## Custom Rules
+
+No custom rules defined yet.
+
+## Workflow Preferences
+
+- ~ Use task-based automation (Taskfile)
+- ! Always run `task check` before committing
+- ~ Follow Conventional Commits
+
+## AI Behavior
+
+- ~ Be direct and concise
+- ~ Proactively suggest improvements
+- ! Explain tradeoffs for major decisions
+
+---
+
+**Note**: You can edit this file anytime to update your preferences.
+**See**: [../main.md](../main.md) for framework overview.
+"""
+            filepath.write_text(default_content, encoding='utf-8')
+            success(f"Reset {name} to default template")
+        else:
+            # Delete file
+            filepath.unlink()
+            success(f"Deleted {name}")
+    
+    print()
+    success("Reset complete!")
+    info("Run 'run bootstrap' or 'run project' to reconfigure.")
+    return 0
+
+# ============================================================================
+# TUI MODE - Textual-based wizard interface
+# ============================================================================
+
+if HAS_TEXTUAL:
+    class MenuScreen(Screen):
+        """Main menu screen with command list."""
+        
+        BINDINGS = [("q", "quit", "Quit"), ("escape", "quit", "Quit")]
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            yield Container(
+                OptionList(
+                    Option("Bootstrap ... Set up user preferences", id="bootstrap"),
+                    Option("Project ..... Create project configuration", id="project"),
+                    Option("Spec ........ Generate specification", id="spec"),
+                    Option("Install ..... Install deft in directory", id="install"),
+                    Option("", id="sep1", disabled=True),
+                    Option("Reset ....... Reset configuration files", id="reset"),
+                    Option("Validate .... Check configuration", id="validate"),
+                    Option("Doctor ...... Check system dependencies", id="doctor"),
+                    Option("", id="sep2", disabled=True),
+                    Option("README ...... View framework documentation", id="readme"),
+                    Option("CHANGELOG ... View version history", id="changelog"),
+                    Option("Main.md ..... View main framework guide", id="mainmd"),
+                    Option("Help ........ Show help", id="help"),
+                    Option("", id="sep3", disabled=True),
+                    Option("Exit ........ Quit wizard", id="exit"),
+                    id="menu"
+                )
+            )
+            yield Footer()
+        
+        def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+            option_id = event.option.id
+            if option_id == "exit":
+                self.app.exit()
+            elif option_id == "help":
+                self.app.push_screen("help")
+            elif option_id == "readme":
+                self.app.push_screen("readme")
+            elif option_id == "changelog":
+                self.app.push_screen("changelog")
+            elif option_id == "mainmd":
+                self.app.push_screen("mainmd")
+            elif option_id == "bootstrap":
+                self.app.push_screen("bootstrap")
+            elif option_id == "project":
+                self.app.push_screen("project")
+            elif option_id == "spec":
+                self.app.push_screen("spec")
+            elif option_id == "install":
+                self.app.push_screen("install")
+            elif option_id == "reset":
+                self.app.push_screen("reset")
+            elif option_id == "validate":
+                self.app.push_screen("validate")
+            elif option_id == "doctor":
+                self.app.push_screen("doctor")
+        
+        def action_quit(self) -> None:
+            self.app.exit()
+    
+    class BootstrapScreen(Screen):
+        """Bootstrap configuration form."""
+        
+        BINDINGS = [("escape", "cancel", "Cancel")]
+        
+        CSS = """
+        BootstrapScreen Horizontal {
+            height: auto;
+        }
+        BootstrapScreen #status {
+            height: auto;
+        }
+        """
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Bootstrap - User Preferences Setup")
+                yield Label("Your name (how AI should address you):")
+                yield Input(id="name", placeholder="Your name")
+                yield Label("\nDefault coverage threshold (%):")
+                yield Input(id="coverage", placeholder="85", value="85")
+                yield Label("\nPrimary languages:")
+                yield Checkbox("Python", id="lang_python")
+                yield Checkbox("Go", id="lang_go")
+                yield Checkbox("TypeScript", id="lang_typescript")
+                yield Checkbox("C++", id="lang_cpp")
+                yield Checkbox("Rust", id="lang_rust")
+                yield Checkbox("Java", id="lang_java")
+                yield Label("\nCustom rules (optional):")
+                yield Input(id="rules", placeholder="Press Enter to skip")
+                yield Label("\nExperimental Rules:")
+                yield Checkbox("Use meta/SOUL.md (Strategic context)", id="use_soul")
+                yield Checkbox("Use meta/morals.md (Ethical AI)", id="use_morals")
+                yield Checkbox("Use meta/code-field.md (Advanced arch)", id="use_code_field")
+            with Horizontal():
+                yield Button("Submit", variant="primary", id="submit")
+                yield Button("Cancel", id="cancel")
+            yield Label("", id="status")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.app.pop_screen()
+            elif event.button.id == "submit":
+                self.handle_submit()
+        
+        def action_cancel(self) -> None:
+            self.app.pop_screen()
+        
+        def handle_submit(self) -> None:
+            name = self.query_one("#name", Input).value.strip()
+            coverage = self.query_one("#coverage", Input).value.strip() or "85"
+            custom_rules = self.query_one("#rules", Input).value.strip()
+            
+            # Get language selections from checkboxes
+            languages = []
+            if self.query_one("#lang_python", Checkbox).value:
+                languages.append("- Python")
+            if self.query_one("#lang_go", Checkbox).value:
+                languages.append("- Go")
+            if self.query_one("#lang_typescript", Checkbox).value:
+                languages.append("- TypeScript")
+            if self.query_one("#lang_cpp", Checkbox).value:
+                languages.append("- C++")
+            if self.query_one("#lang_rust", Checkbox).value:
+                languages.append("- Rust")
+            if self.query_one("#lang_java", Checkbox).value:
+                languages.append("- Java")
+            languages_str = '\n'.join(languages) if languages else "- (None specified)"
+            
+            # Get experimental rules preferences from checkboxes
+            use_soul = self.query_one("#use_soul", Checkbox).value
+            use_morals = self.query_one("#use_morals", Checkbox).value
+            use_code_field = self.query_one("#use_code_field", Checkbox).value
+            
+            if not name:
+                self.query_one("#status", Label).update("[red]Error: Name is required[/red]")
+                return
+            
+            # Build experimental rules section
+            experimental_rules = []
+            if use_soul:
+                experimental_rules.append("- ! Use meta/SOUL.md for strategic context and purpose-driven guidance")
+            if use_morals:
+                experimental_rules.append("- ! Use meta/morals.md for ethical AI development principles")
+            if use_code_field:
+                experimental_rules.append("- ~ Use meta/code-field.md for advanced architecture patterns")
+            
+            experimental_section = ""
+            if experimental_rules:
+                experimental_section = "\n## Experimental Rules\n\n" + "\n".join(experimental_rules)
+            
+            # Generate user.md
+            script_dir = get_script_dir()
+            user_file = script_dir / "core" / "user.md"
+            user_content = f"""# User Preferences
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**Rule Precedence**: This file has HIGHEST precedence - overrides all other deft rules.
+
+## Name
+
+Address the user as: **{name}**
+
+## Default Standards
+
+**Coverage**: ! ≥{coverage}% test coverage for all projects (unless project.md specifies otherwise)
+
+**Primary Languages**:
+{languages_str}
+
+## Custom Rules
+
+{custom_rules if custom_rules else "No custom rules defined yet."}
+{experimental_section}
+
+## Workflow Preferences
+
+- ~ Use task-based automation (Taskfile)
+- ! Always run `task check` before committing
+- ~ Follow Conventional Commits
+
+## AI Behavior
+
+- ~ Be direct and concise
+- ~ Proactively suggest improvements
+- ! Explain tradeoffs for major decisions
+
+---
+
+**Note**: You can edit this file anytime to update your preferences.
+**See**: [../main.md](../main.md) for framework overview.
+"""
+            
+            user_file.parent.mkdir(parents=True, exist_ok=True)
+            user_file.write_text(user_content, encoding='utf-8')
+            
+            self.app.push_screen(SuccessScreen(f"Created user.md at {user_file}", offer_next="project"))
+    
+    class ProjectScreen(Screen):
+        """Project configuration form."""
+        
+        BINDINGS = [("escape", "cancel", "Cancel")]
+        
+        CSS = """
+        ProjectScreen Horizontal {
+            height: auto;
+        }
+        ProjectScreen #status {
+            height: auto;
+        }
+        """
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Project Configuration")
+                yield Label("Project name:")
+                yield Input(id="name", placeholder="My Project")
+                yield Label("\nProject type (select all that apply):")
+                yield Checkbox("CLI", id="type_cli")
+                yield Checkbox("TUI", id="type_tui")
+                yield Checkbox("REST API", id="type_api")
+                yield Checkbox("Web App", id="type_webapp")
+                yield Checkbox("Library", id="type_library")
+                yield Checkbox("Other", id="type_other")
+                yield Label("\nPrimary language:")
+                yield Checkbox("Python", id="lang_python", value=True)
+                yield Checkbox("Go", id="lang_go")
+                yield Checkbox("TypeScript", id="lang_typescript")
+                yield Checkbox("C++", id="lang_cpp")
+                yield Label("\nCoverage threshold (%):")
+                yield Input(id="coverage", placeholder="85", value="85")
+                yield Label("Tech stack details (optional):")
+                yield Input(id="tech_stack", placeholder="Flask + SQLAlchemy")
+            with Horizontal():
+                yield Button("Submit", variant="primary", id="submit")
+                yield Button("Cancel", id="cancel")
+            yield Label("", id="status")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.app.pop_screen()
+            elif event.button.id == "submit":
+                self.handle_submit()
+        
+        def action_cancel(self) -> None:
+            self.app.pop_screen()
+        
+        def handle_submit(self) -> None:
+            project_name = self.query_one("#name", Input).value.strip()
+            coverage = self.query_one("#coverage", Input).value.strip() or "85"
+            tech_stack = self.query_one("#tech_stack", Input).value.strip()
+            
+            if not project_name:
+                self.query_one("#status", Label).update("[red]Error: Project name is required[/red]")
+                return
+            
+            # Get project types from checkboxes
+            project_types = []
+            if self.query_one("#type_cli", Checkbox).value:
+                project_types.append("CLI")
+            if self.query_one("#type_tui", Checkbox).value:
+                project_types.append("TUI")
+            if self.query_one("#type_api", Checkbox).value:
+                project_types.append("REST API")
+            if self.query_one("#type_webapp", Checkbox).value:
+                project_types.append("Web App")
+            if self.query_one("#type_library", Checkbox).value:
+                project_types.append("Library")
+            if self.query_one("#type_other", Checkbox).value:
+                project_types.append("Other")
+            project_types_str = ", ".join(project_types) if project_types else "Application"
+            
+            # Get primary language from checkboxes (first selected)
+            languages = []
+            if self.query_one("#lang_python", Checkbox).value:
+                languages.append("Python")
+            if self.query_one("#lang_go", Checkbox).value:
+                languages.append("Go")
+            if self.query_one("#lang_typescript", Checkbox).value:
+                languages.append("TypeScript")
+            if self.query_one("#lang_cpp", Checkbox).value:
+                languages.append("C++")
+            primary_lang = languages[0] if languages else "Python"
+            
+            tech_stack_str = f" - {tech_stack}" if tech_stack else ""
+            today = datetime.now().strftime("%Y-%m-%d")
+            
+            # Generate project.md
+            project_file = Path("./deft/core/project.md")
+            project_content = f"""# {project_name} Project Guidelines
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**⚠️ See also**: [../main.md](../main.md) | [../languages/{primary_lang.lower()}.md](../languages/{primary_lang.lower()}.md)
+
+## Project Configuration
+
+**Tech Stack**: {project_types_str} using {primary_lang}{tech_stack_str}
+
+## Workflow
+
+```bash
+task check         # Pre-commit (fmt, lint, test, test:coverage)
+task test:coverage # Coverage (≥{coverage}%)
+task build         # Build project
+task clean         # Clean artifacts
+```
+
+## Secrets
+
+```bash
+ls secrets/
+# Add your secrets to secrets/ directory
+# Use .example files as templates
+```
+
+## Standards
+
+**Quality:**
+- ! Run `task check` before every commit
+- ! Achieve ≥{coverage}% coverage overall + per-module
+- ! Store secrets in `secrets/` dir
+- ~ Provide `.example` templates for secrets
+
+**Telemetry:**
+- ~ Structured logging (see [../tools/telemetry.md](../tools/telemetry.md))
+- ~ Sentry.io for error tracking
+- ? Distributed tracing for complex workflows
+
+## Project-Specific Rules
+
+(Add your custom rules here)
+
+---
+
+**Generated by**: run v{VERSION}
+**Date**: {today}
+"""
+            
+            project_file.parent.mkdir(parents=True, exist_ok=True)
+            project_file.write_text(project_content, encoding='utf-8')
+            
+            self.app.push_screen(SuccessScreen(f"Created project.md at {project_file}", offer_next="spec"))
+    
+    class SuccessScreen(Screen):
+        """Success message with optional next step."""
+        
+        def __init__(self, message: str, offer_next: Optional[str] = None):
+            super().__init__()
+            self.message = message
+            self.offer_next = offer_next
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with Container():
+                yield Label(f"[green]✓[/green] {self.message}")
+                if self.offer_next:
+                    yield Label(f"\nWould you like to run '{self.offer_next}' next?")
+                    with Horizontal():
+                        yield Button("Yes", variant="primary", id="yes")
+                        yield Button("No, return to menu", id="no")
+                else:
+                    yield Button("Return to Menu", variant="primary", id="no")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "yes" and self.offer_next:
+                self.app.pop_screen()  # Pop success screen
+                self.app.push_screen(self.offer_next)
+            else:
+                self.app.pop_screen()  # Return to previous screen
+    
+    class SpecScreen(Screen):
+        """Spec generation form."""
+        
+        BINDINGS = [("escape", "cancel", "Cancel")]
+        
+        def __init__(self):
+            super().__init__()
+            self.features = []
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Specification Generator - PRD.md")
+                yield Label("Project name:")
+                yield Input(id="name", placeholder="My Project")
+                yield Label("Brief description (1-2 sentences):")
+                yield Input(id="description", placeholder="What does this project do?")
+                yield Label("Features (one per line):")
+                yield Input(id="feature_input", placeholder="Enter a feature and press Enter")
+                yield Label("", id="feature_list")
+                with Horizontal():
+                    yield Button("Add Feature", id="add_feature")
+                    yield Button("Clear Features", id="clear_features")
+                with Horizontal():
+                    yield Button("Submit", variant="primary", id="submit")
+                    yield Button("Cancel", id="cancel")
+                yield Label("", id="status")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.app.pop_screen()
+            elif event.button.id == "add_feature":
+                self.add_feature()
+            elif event.button.id == "clear_features":
+                self.features = []
+                self.update_feature_list()
+            elif event.button.id == "submit":
+                self.handle_submit()
+        
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            if event.input.id == "feature_input":
+                self.add_feature()
+        
+        def add_feature(self) -> None:
+            feature_input = self.query_one("#feature_input", Input)
+            feature = feature_input.value.strip()
+            if feature:
+                self.features.append(feature)
+                feature_input.value = ""
+                self.update_feature_list()
+        
+        def update_feature_list(self) -> None:
+            feature_list = self.query_one("#feature_list", Label)
+            if self.features:
+                text = "\n".join([f"{i+1}. {f}" for i, f in enumerate(self.features)])
+                feature_list.update(f"Features ({len(self.features)}): \n{text}")
+            else:
+                feature_list.update("No features added yet")
+        
+        def action_cancel(self) -> None:
+            self.app.pop_screen()
+        
+        def handle_submit(self) -> None:
+            project_name = self.query_one("#name", Input).value.strip()
+            description = self.query_one("#description", Input).value.strip()
+            
+            if not project_name:
+                self.query_one("#status", Label).update("[red]Error: Project name is required[/red]")
+                return
+            
+            if not description:
+                self.query_one("#status", Label).update("[red]Error: Description is required[/red]")
+                return
+            
+            if not self.features:
+                self.query_one("#status", Label).update("[red]Error: Add at least one feature[/red]")
+                return
+            
+            # Generate PRD
+            feature_list = '\n'.join([f"{i+1}. {f}" for i, f in enumerate(self.features)])
+            script_dir = get_script_dir()
+            template_file = script_dir / "templates" / "make-spec.md"
+            
+            if template_file.exists():
+                template_content = template_file.read_text(encoding='utf-8')
+                template_content = template_content.replace("[project name]", project_name)
+                template_content = template_content.replace(f"I want to build [project name]", f"I want to build {project_name}")
+            else:
+                template_content = "(Template not found)"
+            
+            today = datetime.now().strftime("%Y-%m-%d")
+            prd_file = Path("./PRD.md")
+            prd_content = f"""# Product Requirements Document: {project_name}
+
+**Generated**: {today}
+**Status**: Ready for AI Interview
+
+## Initial Input
+
+**Project Description**: {description}
+
+**I want to build {project_name} that has the following features:**
+{feature_list}
+---
+
+{template_content}
+"""
+            
+            prd_file.write_text(prd_content, encoding='utf-8')
+            self.app.push_screen(SuccessScreen(f"Created PRD.md at {prd_file}"))
+    
+    class InstallScreen(Screen):
+        """Install deft in directory."""
+        
+        BINDINGS = [("escape", "cancel", "Cancel")]
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Install Deft Framework")
+                yield Label("Target directory (default: current):")
+                yield Input(id="directory", placeholder=".", value=".")
+                yield Label("\nThis will create:")
+                yield Label("  • ./deft/ - Framework files")
+                yield Label("  • ./secrets/ - Credentials directory")
+                yield Label("  • ./docs/ - Documentation")
+                yield Label("  • Taskfile.yml - Task automation")
+                yield Label("  • .gitignore - Git configuration")
+                with Horizontal():
+                    yield Button("Install", variant="primary", id="install")
+                    yield Button("Cancel", id="cancel")
+                yield Label("", id="status")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.app.pop_screen()
+            elif event.button.id == "install":
+                self.handle_install()
+        
+        def action_cancel(self) -> None:
+            self.app.pop_screen()
+        
+        def handle_install(self) -> None:
+            target_dir = Path(self.query_one("#directory", Input).value.strip() or ".")
+            
+            if not target_dir.exists():
+                self.query_one("#status", Label).update(f"[red]Error: Directory does not exist: {target_dir}[/red]")
+                return
+            
+            original_dir = Path.cwd()
+            try:
+                os.chdir(target_dir)
+                deft_dir = Path("./deft")
+                
+                if deft_dir.exists():
+                    self.query_one("#status", Label).update("[yellow]Deft already installed. Reinstalling...[/yellow]")
+                    shutil.rmtree(deft_dir)
+                
+                script_dir = get_script_dir()
+                shutil.copytree(script_dir, deft_dir)
+                
+                Path("secrets").mkdir(exist_ok=True)
+                Path("docs").mkdir(exist_ok=True)
+                Path("secrets/.gitkeep").touch()
+                
+                gitignore = Path(".gitignore")
+                if not gitignore.exists():
+                    gitignore.write_text("secrets/*\n!secrets/.gitkeep\n!secrets/*.example\n", encoding='utf-8')
+                
+                self.app.push_screen(SuccessScreen(f"Installed deft in {target_dir.absolute()}", offer_next="project"))
+            except Exception as e:
+                self.query_one("#status", Label).update(f"[red]Error: {e}[/red]")
+            finally:
+                os.chdir(original_dir)
+    
+    class ResetScreen(Screen):
+        """Reset configuration files."""
+        
+        BINDINGS = [("escape", "cancel", "Cancel")]
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Reset Configuration Files")
+                yield Label("\nSelect files to reset/delete:")
+                
+                # Check which files exist
+                script_dir = get_script_dir()
+                user_file = script_dir / "core" / "user.md"
+                project_file = Path("./deft/core/project.md")
+                prd_file = Path("./PRD.md")
+                spec_file = Path("./SPECIFICATION.md")
+                
+                if user_file.exists():
+                    yield Label(f"[cyan]✓[/cyan] user.md (will reset to default)", id="user_exists")
+                else:
+                    yield Label("[dim]user.md (not found)[/dim]", id="user_missing")
+                
+                if project_file.exists():
+                    yield Label(f"[cyan]✓[/cyan] project.md (will delete)", id="project_exists")
+                else:
+                    yield Label("[dim]project.md (not found)[/dim]", id="project_missing")
+                
+                if prd_file.exists():
+                    yield Label(f"[cyan]✓[/cyan] PRD.md (will delete)", id="prd_exists")
+                else:
+                    yield Label("[dim]PRD.md (not found)[/dim]", id="prd_missing")
+                
+                if spec_file.exists():
+                    yield Label(f"[cyan]✓[/cyan] SPECIFICATION.md (will delete)", id="spec_exists")
+                else:
+                    yield Label("[dim]SPECIFICATION.md (not found)[/dim]", id="spec_missing")
+                
+                yield Label("\n[yellow]Warning: This action cannot be undone![/yellow]")
+                
+                with Horizontal():
+                    yield Button("Reset All", variant="error", id="reset")
+                    yield Button("Cancel", id="cancel")
+                yield Label("", id="status")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.app.pop_screen()
+            elif event.button.id == "reset":
+                self.handle_reset()
+        
+        def action_cancel(self) -> None:
+            self.app.pop_screen()
+        
+        def handle_reset(self) -> None:
+            script_dir = get_script_dir()
+            user_file = script_dir / "core" / "user.md"
+            project_file = Path("./deft/core/project.md")
+            prd_file = Path("./PRD.md")
+            spec_file = Path("./SPECIFICATION.md")
+            
+            reset_count = 0
+            
+            if user_file.exists():
+                default_content = """# User Preferences
+
+Legend (from RFC2119): !=MUST, ~=SHOULD, ≉=SHOULD NOT, ⊗=MUST NOT, ?=MAY.
+
+**Rule Precedence**: This file has HIGHEST precedence - overrides all other deft rules.
+
+## Name
+
+Address the user as: **(Your Name)**
+
+## Default Standards
+
+**Coverage**: ! ≥85% test coverage for all projects (unless project.md specifies otherwise)
+
+**Primary Languages**:
+- (Add your languages here)
+
+## Custom Rules
+
+No custom rules defined yet.
+
+## Workflow Preferences
+
+- ~ Use task-based automation (Taskfile)
+- ! Always run `task check` before committing
+- ~ Follow Conventional Commits
+
+## AI Behavior
+
+- ~ Be direct and concise
+- ~ Proactively suggest improvements
+- ! Explain tradeoffs for major decisions
+
+---
+
+**Note**: You can edit this file anytime to update your preferences.
+**See**: [../main.md](../main.md) for framework overview.
+"""
+                user_file.write_text(default_content, encoding='utf-8')
+                reset_count += 1
+            
+            for file in [project_file, prd_file, spec_file]:
+                if file.exists():
+                    file.unlink()
+                    reset_count += 1
+            
+            if reset_count > 0:
+                self.app.push_screen(SuccessScreen(f"Reset {reset_count} file(s)"))
+            else:
+                self.query_one("#status", Label).update("[yellow]No files to reset[/yellow]")
+    
+    class ValidateScreen(Screen):
+        """Validate deft configuration."""
+        
+        BINDINGS = [("escape", "back", "Back")]
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Deft Configuration Validation")
+                yield Static("", id="results")
+                yield Button("Back to Menu", variant="primary", id="back")
+            yield Footer()
+        
+        def on_mount(self) -> None:
+            self.run_validation()
+        
+        def run_validation(self) -> None:
+            results = ["Running validation...\n"]
+            script_dir = get_script_dir()
+            errors = 0
+            
+            # Check required files
+            required_files = [
+                "main.md",
+                "core/user.md",
+                "coding/coding.md",
+                "REFERENCES.md"
+            ]
+            
+            for file in required_files:
+                filepath = script_dir / file
+                if filepath.exists():
+                    results.append(f"[green]✓[/green] Found: {file}")
+                else:
+                    results.append(f"[red]✗[/red] Missing: {file}")
+                    errors += 1
+            
+            # Check language files
+            lang_dir = script_dir / "languages"
+            if lang_dir.exists() and list(lang_dir.glob("*.md")):
+                results.append(f"[green]✓[/green] Language files present")
+            else:
+                results.append(f"[red]✗[/red] No language files found")
+                errors += 1
+            
+            results.append("")
+            if errors == 0:
+                results.append("[green]✓ Validation passed![/green]")
+            else:
+                results.append(f"[red]✗ Validation failed with {errors} error(s)[/red]")
+            
+            self.query_one("#results", Static).update("\n".join(results))
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            self.app.pop_screen()
+        
+        def action_back(self) -> None:
+            self.app.pop_screen()
+    
+    class DoctorScreen(Screen):
+        """Check system dependencies."""
+        
+        BINDINGS = [("escape", "back", "Back")]
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            with ScrollableContainer():
+                yield Label("Deft Doctor - System Check")
+                yield Static("", id="results")
+                yield Button("Back to Menu", variant="primary", id="back")
+            yield Footer()
+        
+        def on_mount(self) -> None:
+            self.run_checks()
+        
+        def run_checks(self) -> None:
+            results = ["Checking system...\n"]
+            warnings = 0
+            
+            # Check commands
+            commands = [
+                ("task", "Task (Taskfile)", False),
+                ("git", "Git", True),
+                ("python3", "Python 3", False),
+                ("go", "Go", False),
+                ("node", "Node.js", False),
+            ]
+            
+            for cmd, name, required in commands:
+                if shutil.which(cmd):
+                    results.append(f"[green]✓[/green] {name} is installed")
+                else:
+                    if required:
+                        results.append(f"[red]✗[/red] {name} not found - required")
+                    else:
+                        results.append(f"[yellow]⚠[/yellow] {name} not found")
+                        warnings += 1
+            
+            # Check directory structure
+            results.append("\nChecking Deft structure...")
+            script_dir = get_script_dir()
+            expected_dirs = ["core", "languages", "interfaces", "tools", "swarm", "templates", "meta"]
+            
+            for dir_name in expected_dirs:
+                dir_path = script_dir / dir_name
+                if dir_path.is_dir():
+                    results.append(f"[green]✓[/green] Directory: {dir_name}/")
+                else:
+                    results.append(f"[yellow]⚠[/yellow] Missing: {dir_name}/")
+                    warnings += 1
+            
+            results.append("")
+            if warnings == 0:
+                results.append("[green]✓ System check passed![/green]")
+            else:
+                results.append(f"[yellow]⚠ System check completed with {warnings} warning(s)[/yellow]")
+            
+            self.query_one("#results", Static).update("\n".join(results))
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            self.app.pop_screen()
+        
+        def action_back(self) -> None:
+            self.app.pop_screen()
+    
+    class ReadmeScreen(Screen):
+        """View README.md with markdown rendering."""
+        
+        BINDINGS = [("escape", "back", "Back"), ("q", "quit", "Menu")]
+        
+        def __init__(self):
+            super().__init__()
+            self.history = []  # Track navigation history
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            readme_file = get_script_dir() / "README.md"
+            if readme_file.exists():
+                yield MarkdownViewer()
+            else:
+                yield Static("[red]README.md not found[/red]")
+            yield Footer()
+        
+        def on_mount(self) -> None:
+            readme_file = get_script_dir() / "README.md"
+            if readme_file.exists():
+                try:
+                    viewer = self.query_one(MarkdownViewer)
+                    viewer.document.update(readme_file.read_text(encoding='utf-8'))
+                    self.history = [readme_file]  # Initialize with starting doc
+                except:
+                    pass
+        
+        def on_markdown_link_clicked(self, event) -> None:
+            """Handle markdown link clicks - navigate to other markdown files or open external URLs."""
+            href = event.href
+            
+            # Check if this is a real external URL (contains ://) but exclude file:// and others
+            # Also check it's not a .md file that got URL-ified (e.g., SKILL.md -> http://SKILL.md)
+            is_external_url = (href and 
+                             ('://' in href) and 
+                             href.startswith(('http://', 'https://')) and
+                             not href.split('://', 1)[1].endswith('.md'))
+            
+            # Let real external URLs open in browser
+            if is_external_url:
+                return  # Don't prevent default - let it open
+            
+            # Prevent default for all other links (including .md files that got URL-ified)
+            event.prevent_default()
+            
+            # Handle internal markdown links
+            if href and not href.startswith('mailto:'):
+                # Extract just the filename if it got converted to a URL
+                if '://' in href and href.split('://', 1)[1].endswith('.md'):
+                    href = href.split('://', 1)[1].lstrip('/')
+                
+                if href.endswith('.md'):
+                    # Load the linked markdown file
+                    script_dir = get_script_dir()
+                    target_file = script_dir / href
+                    if target_file.exists():
+                        try:
+                            viewer = self.query_one(MarkdownViewer)
+                            viewer.document.update(target_file.read_text(encoding='utf-8'))
+                            self.history.append(target_file)  # Add to history
+                        except:
+                            pass
+        
+        def action_back(self) -> None:
+            """Go back to previous document or menu if no history."""
+            if len(self.history) > 1:
+                # Remove current document and go back to previous
+                self.history.pop()
+                prev_file = self.history[-1]
+                try:
+                    viewer = self.query_one(MarkdownViewer)
+                    viewer.document.update(prev_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+            else:
+                # No history, return to menu
+                self.app.pop_screen()
+        
+        def action_quit(self) -> None:
+            """Return to menu."""
+            self.app.pop_screen()
+    
+    class ChangelogScreen(Screen):
+        """View CHANGELOG.md with markdown rendering."""
+        
+        BINDINGS = [("escape", "back", "Back"), ("q", "quit", "Menu")]
+        
+        def __init__(self):
+            super().__init__()
+            self.history = []  # Track navigation history
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            changelog_file = get_script_dir() / "CHANGELOG.md"
+            if changelog_file.exists():
+                yield MarkdownViewer()
+            else:
+                yield Static("[red]CHANGELOG.md not found[/red]")
+            yield Footer()
+        
+        def on_mount(self) -> None:
+            changelog_file = get_script_dir() / "CHANGELOG.md"
+            if changelog_file.exists():
+                try:
+                    viewer = self.query_one(MarkdownViewer)
+                    viewer.document.update(changelog_file.read_text(encoding='utf-8'))
+                    self.history = [changelog_file]  # Initialize with starting doc
+                except:
+                    pass
+        
+        def on_markdown_link_clicked(self, event) -> None:
+            """Handle markdown link clicks - navigate to other markdown files or open external URLs."""
+            href = event.href
+            
+            # Check if this is a real external URL (contains ://) but exclude file:// and others
+            # Also check it's not a .md file that got URL-ified (e.g., SKILL.md -> http://SKILL.md)
+            is_external_url = (href and 
+                             ('://' in href) and 
+                             href.startswith(('http://', 'https://')) and
+                             not href.split('://', 1)[1].endswith('.md'))
+            
+            # Let real external URLs open in browser
+            if is_external_url:
+                return  # Don't prevent default - let it open
+            
+            # Prevent default for all other links (including .md files that got URL-ified)
+            event.prevent_default()
+            
+            # Handle internal markdown links
+            if href and not href.startswith('mailto:'):
+                # Extract just the filename if it got converted to a URL
+                if '://' in href and href.split('://', 1)[1].endswith('.md'):
+                    href = href.split('://', 1)[1].lstrip('/')
+                
+                if href.endswith('.md'):
+                    # Load the linked markdown file
+                    script_dir = get_script_dir()
+                    target_file = script_dir / href
+                    if target_file.exists():
+                        try:
+                            viewer = self.query_one(MarkdownViewer)
+                            viewer.document.update(target_file.read_text(encoding='utf-8'))
+                            self.history.append(target_file)  # Add to history
+                        except:
+                            pass
+        
+        def action_back(self) -> None:
+            """Go back to previous document or menu if no history."""
+            if len(self.history) > 1:
+                # Remove current document and go back to previous
+                self.history.pop()
+                prev_file = self.history[-1]
+                try:
+                    viewer = self.query_one(MarkdownViewer)
+                    viewer.document.update(prev_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+            else:
+                # No history, return to menu
+                self.app.pop_screen()
+        
+        def action_quit(self) -> None:
+            """Return to menu."""
+            self.app.pop_screen()
+    
+    class MainMdScreen(Screen):
+        """View main.md with markdown rendering."""
+        
+        BINDINGS = [("escape", "back", "Back"), ("q", "quit", "Menu")]
+        
+        def __init__(self):
+            super().__init__()
+            self.history = []  # Track navigation history
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            mainmd_file = get_script_dir() / "main.md"
+            if mainmd_file.exists():
+                yield MarkdownViewer()
+            else:
+                yield Static("[red]main.md not found[/red]")
+            yield Footer()
+        
+        def on_mount(self) -> None:
+            mainmd_file = get_script_dir() / "main.md"
+            if mainmd_file.exists():
+                try:
+                    viewer = self.query_one(MarkdownViewer)
+                    viewer.document.update(mainmd_file.read_text(encoding='utf-8'))
+                    self.history = [mainmd_file]  # Initialize with starting doc
+                except:
+                    pass
+        
+        def on_markdown_link_clicked(self, event) -> None:
+            """Handle markdown link clicks - navigate to other markdown files or open external URLs."""
+            href = event.href
+            
+            # Check if this is a real external URL (contains ://) but exclude file:// and others
+            # Also check it's not a .md file that got URL-ified (e.g., SKILL.md -> http://SKILL.md)
+            is_external_url = (href and 
+                             ('://' in href) and 
+                             href.startswith(('http://', 'https://')) and
+                             not href.split('://', 1)[1].endswith('.md'))
+            
+            # Let real external URLs open in browser
+            if is_external_url:
+                return  # Don't prevent default - let it open
+            
+            # Prevent default for all other links (including .md files that got URL-ified)
+            event.prevent_default()
+            
+            # Handle internal markdown links
+            if href and not href.startswith('mailto:'):
+                # Extract just the filename if it got converted to a URL
+                if '://' in href and href.split('://', 1)[1].endswith('.md'):
+                    href = href.split('://', 1)[1].lstrip('/')
+                
+                if href.endswith('.md'):
+                    # Load the linked markdown file
+                    script_dir = get_script_dir()
+                    target_file = script_dir / href
+                    if target_file.exists():
+                        try:
+                            viewer = self.query_one(MarkdownViewer)
+                            viewer.document.update(target_file.read_text(encoding='utf-8'))
+                            self.history.append(target_file)  # Add to history
+                        except:
+                            pass
+        
+        def action_back(self) -> None:
+            """Go back to previous document or menu if no history."""
+            if len(self.history) > 1:
+                # Remove current document and go back to previous
+                self.history.pop()
+                prev_file = self.history[-1]
+                try:
+                    viewer = self.query_one(MarkdownViewer)
+                    viewer.document.update(prev_file.read_text(encoding='utf-8'))
+                except:
+                    pass
+            else:
+                # No history, return to menu
+                self.app.pop_screen()
+        
+        def action_quit(self) -> None:
+            """Return to menu."""
+            self.app.pop_screen()
+    
+    class HelpScreen(Screen):
+        """Help screen showing usage information."""
+        
+        BINDINGS = [("escape", "back", "Back")]
+        
+        def compose(self) -> ComposeResult:
+            yield Header()
+            help_text = f"""Deft CLI v{VERSION}
+
+Usage: run <command> [options]
+       run tui          # Launch this wizard
+       run wizard       # Launch this wizard
+
+Commands:
+  bootstrap       Set up your user preferences (user.md)
+  project         Create/update project configuration (project.md)
+  spec            Generate project specification (interactive interview)
+  install         Install deft framework in a project directory
+  reset           Reset configuration files to default state
+  validate        Validate deft configuration files
+  update          Update deft framework to latest version
+  doctor          Check system dependencies and configuration
+  help            Show this help message
+
+Examples:
+  run bootstrap              # First-time setup
+  run project                # Configure current project
+  run spec                   # Generate SPECIFICATION.md
+  run install ~/my-project   # Install deft in a project
+
+For more information: https://github.com/visionik/deft
+"""
+            with ScrollableContainer():
+                yield Static(help_text)
+                yield Button("Back", variant="primary", id="back")
+            yield Footer()
+        
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            self.app.pop_screen()
+        
+        def action_back(self) -> None:
+            self.app.pop_screen()
+    
+    class DeftWizardApp(App):
+        """Main TUI application."""
+        
+        TITLE = f"Deft v{VERSION}"
+        
+        CSS = """
+        MenuScreen {
+            align: center middle;
+        }
+        
+        MenuScreen Container {
+            align: center middle;
+            width: 60;
+            height: auto;
+        }
+        
+        #menu {
+            width: 100%;
+            height: auto;
+            border: solid $accent;
+        }
+        
+        Label {
+            margin: 1 0;
+        }
+        
+        Input {
+            margin: 0 0 1 0;
+        }
+        
+        Button {
+            margin: 1;
+        }
+        
+        #status {
+            color: $warning;
+        }
+        """
+        
+        SCREENS = {
+            "menu": MenuScreen,
+            "bootstrap": BootstrapScreen,
+            "project": ProjectScreen,
+            "spec": SpecScreen,
+            "install": InstallScreen,
+            "reset": ResetScreen,
+            "validate": ValidateScreen,
+            "doctor": DoctorScreen,
+            "readme": ReadmeScreen,
+            "changelog": ChangelogScreen,
+            "mainmd": MainMdScreen,
+            "help": HelpScreen,
+        }
+        
+        def on_mount(self) -> None:
+            self.push_screen("menu")
+
+def check_prompt_toolkit():
+    """Check if prompt_toolkit is available and offer to help install it"""
+    if not HAS_PROMPT_TOOLKIT:
+        print()
+        info("run works better with prompt_toolkit (arrow keys, history, tab completion)")
+        try:
+            response = input("Would you like installation instructions? (y/N) ").strip().lower()
+            if response in ('y', 'yes'):
+                print()
+                success("To install prompt_toolkit:")
+                print()
+                # Get the Python executable path
+                python_exe = sys.executable
+                
+                # Try to determine if this is an externally-managed environment
+                # by checking for the EXTERNALLY-MANAGED file (PEP 668)
+                stdlib_path = Path(sys.base_prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}"
+                is_externally_managed = (stdlib_path / "EXTERNALLY-MANAGED").exists()
+                
+                if is_externally_managed:
+                    print(f"  {python_exe} -m pip install --break-system-packages prompt_toolkit")
+                    print()
+                    warn("Your Python is externally-managed (PEP 668) by your package manager.")
+                    info("The --break-system-packages flag allows installing Python packages directly.")
+                    info("Alternative: Use a virtual environment or pipx for isolated installations.")
+                    info("More info: https://peps.python.org/pep-0668/")
+                else:
+                    print(f"  {python_exe} -m pip install prompt_toolkit")
+                print()
+                info("After installing, re-run your command:")
+                print(f"  {' '.join(sys.argv)}")
+                print()
+                return True  # Exit after showing instructions
+        except (EOFError, KeyboardInterrupt):
+            print()
+    return False  # Continue normally
+
+def main():
+    """Main command dispatcher"""
+    # Handle help flags
+    if len(sys.argv) >= 2 and sys.argv[1] in ['-h', '--help', '-help']:
+        usage()
+        return 0
+    
+    # Launch TUI if no args or explicit tui/wizard command
+    if len(sys.argv) < 2 or (len(sys.argv) >= 2 and sys.argv[1] in ['tui', 'wizard']):
+        if HAS_TEXTUAL:
+            app = DeftWizardApp()
+            app.run()
+            return 0
+        elif len(sys.argv) >= 2 and sys.argv[1] in ['tui', 'wizard']:
+            # User explicitly requested TUI but it's not available
+            error("TUI mode requires textual library")
+            print()
+            python_exe = sys.executable
+            stdlib_path = Path(sys.base_prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}"
+            is_externally_managed = (stdlib_path / "EXTERNALLY-MANAGED").exists()
+            
+            info("To install textual:")
+            if is_externally_managed:
+                print(f"  {python_exe} -m pip install --break-system-packages textual")
+            else:
+                print(f"  {python_exe} -m pip install textual")
+            print()
+            info("Or use CLI commands directly: run bootstrap, run project, etc.")
+            return 1
+        else:
+            # No args and no textual - show usage
+            usage()
+            return 0
+    
+    # Check for prompt_toolkit and offer help (only for interactive commands)
+    command = sys.argv[1]
+    interactive_commands = ['bootstrap', 'project', 'spec', 'install']
+    if command in interactive_commands and check_prompt_toolkit():
+        return 0  # Exit after showing install instructions
+    
+    args = sys.argv[2:]
+    
+    commands = {
+        'bootstrap': cmd_bootstrap,
+        'project': cmd_project,
+        'spec': cmd_spec,
+        'install': cmd_install,
+        'reset': cmd_reset,
+        'validate': cmd_validate,
+        'doctor': cmd_doctor,
+        'update': cmd_update,
+        'help': lambda _: usage(),
+        '--help': lambda _: usage(),
+        'version': lambda _: print(f"Deft CLI v{VERSION}"),
+        '--version': lambda _: print(f"Deft CLI v{VERSION}"),
+        '-v': lambda _: print(f"Deft CLI v{VERSION}"),
+    }
+    
+    if command in commands:
+        try:
+            return commands[command](args)
+        except KeyboardInterrupt:
+            print()
+            warn("Operation cancelled by user")
+            return 130
+        except Exception as e:
+            error(f"Error: {e}")
+            return 1
+    else:
+        error(f"Unknown command: {command}")
+        print()
+        usage()
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main() or 0)
