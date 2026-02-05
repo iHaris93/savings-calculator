@@ -7,12 +7,23 @@
   'use strict';
 
   // Debug flag – flip to true for console logging
-  var DEBUG = false;
+  var DEBUG = true;
 
   function log() {
     if (DEBUG && typeof console !== 'undefined' && console.log) {
       console.log.apply(console, ['[HS-Email]'].concat(Array.prototype.slice.call(arguments)));
     }
+  }
+
+  /**
+   * Update the HubSpot debug field with current status
+   */
+  function updateDebugField(message) {
+    var debugInput = document.getElementById('hsDebugUrl');
+    if (debugInput) {
+      debugInput.value = message;
+    }
+    log('Debug:', message);
   }
 
   // Store the latest estimator URL (fallback to current href)
@@ -73,11 +84,19 @@
     var url = window.__latestEstimatorUrl;
     if (!url) {
       log('No URL to inject');
+      updateDebugField('ERROR: No URL available');
       return false;
     }
     var input = findHiddenInput(container);
     if (!input) {
       log('Hidden input not found yet');
+      // List all inputs in container for debugging
+      var allInputs = container ? container.querySelectorAll('input') : [];
+      var inputNames = [];
+      for (var i = 0; i < allInputs.length; i++) {
+        inputNames.push(allInputs[i].name || '(no name)');
+      }
+      updateDebugField('Searching... Found ' + allInputs.length + ' inputs: ' + inputNames.join(', '));
       return false;
     }
     input.value = url;
@@ -92,6 +111,7 @@
       log('Event dispatch failed (older browser?)');
     }
     log('Injected URL into hidden field:', url, 'Input name:', input.name);
+    updateDebugField('OK: Injected into [' + input.name + '] = ' + url);
     return input.value === url;
   }
 
@@ -104,6 +124,7 @@
       clearInterval(injectionIntervalId);
     }
     injectionAttempts = 0;
+    updateDebugField('Starting injection loop... URL: ' + (window.__latestEstimatorUrl || '(none)'));
     injectionIntervalId = setInterval(function () {
       injectionAttempts++;
       var success = injectUrl(container);
@@ -114,6 +135,7 @@
           log('Injection loop completed successfully after', injectionAttempts, 'attempts');
         } else {
           log('Injection loop timed out after', injectionAttempts, 'attempts');
+          updateDebugField('TIMEOUT after ' + injectionAttempts + ' attempts. Hidden field not found.');
         }
       }
     }, 250);
@@ -127,7 +149,11 @@
     var input = findHiddenInput(e.target);
     if (input) {
       log('Submit intercepted, injecting URL');
+      updateDebugField('SUBMIT: Injecting URL now...');
       injectUrl(e.target);
+    } else {
+      log('Submit intercepted but no hardware_estimate_url field found in form');
+      updateDebugField('SUBMIT: No hardware_estimate_url field in form!');
     }
   }, true); // capture phase
 
@@ -178,8 +204,17 @@
     // Remove hidden class to show
     wrap.classList.remove('hidden');
 
+    // Show debug section
+    var debugSection = document.getElementById('hsDebugSection');
+    if (debugSection) {
+      debugSection.classList.remove('hidden');
+    }
+
     // Scroll into view
     wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Update debug with current URL
+    updateDebugField('Form showing. Current URL: ' + (window.__latestEstimatorUrl || '(none)'));
 
     // Render form if not yet done
     renderHsForm(wrap);

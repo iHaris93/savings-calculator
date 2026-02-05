@@ -751,6 +751,26 @@
                     Fill in your details below and we'll send a copy of this estimate to your inbox.
                   </p>
                   <!-- HubSpot form will be dynamically injected here -->
+
+                  <!-- HubSpot Debug Section -->
+                  <div
+                    id="hsDebugSection"
+                    class="hidden mt-4 p-3 rounded-lg border border-dashed border-amber-400 bg-amber-50"
+                  >
+                    <p class="text-[11px] font-semibold text-amber-700 mb-1">
+                      HubSpot Debug – Estimator URL Injection Status:
+                    </p>
+                    <input
+                      id="hsDebugUrl"
+                      type="text"
+                      readonly
+                      class="block w-full rounded border border-amber-300 bg-white px-2 py-1 font-mono text-[11px] text-slate-700"
+                      value="(waiting for form render...)"
+                    />
+                    <p class="mt-2 text-[10px] text-amber-600">
+                      This shows the injection status. Check browser console for detailed [HS-Email] logs.
+                    </p>
+                  </div>
                 </section>
               </div>
             </section>
