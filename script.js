@@ -26,6 +26,16 @@
   const softwareLprCheckbox = document.getElementById('softwareLpr');
   const softwareMmcgCheckbox = document.getElementById('softwareMmcg');
   const softwareBillingFrequencySelect = document.getElementById('softwareBillingFrequency');
+  const todaySoftwareCostInput = document.getElementById('todaySoftwareCost');
+  const todaySoftwareGroup = document.getElementById('todaySoftwareGroup');
+
+  // ROI elements
+  const roiSection = document.getElementById('roiSection');
+  const roiToggle = document.getElementById('roiToggle');
+  const roiPanel = document.getElementById('roiPanel');
+  const roiHeadline = document.getElementById('roiHeadline');
+  const roiSubtext = document.getElementById('roiSubtext');
+  const roiChart = document.getElementById('roiChart');
 
   // Sections
   const sectionCurrentApproach = document.getElementById('sectionCurrentApproach');
@@ -156,6 +166,10 @@
 
     if (softwareBillingFrequencySelect) {
       softwareBillingFrequencySelect.value = p.billing === 'yearly' ? 'yearly' : 'monthly';
+    }
+
+    if (todaySoftwareCostInput) {
+      todaySoftwareCostInput.value = p.todaySoftware > 0 ? String(p.todaySoftware) : '';
     }
 
     // Breakdown expanded state from URL state
@@ -392,6 +406,46 @@
     if (softwareBreakdownLine && breakdown.softwareLine) {
       softwareBreakdownLine.textContent = breakdown.softwareLine;
     }
+
+    // ROI Timeline
+    if (roiSection) {
+      const roi = result.roi;
+      if (roi && roi.applicable) {
+        show(roiSection);
+        if (roiHeadline) roiHeadline.textContent = roi.headline;
+        if (roiSubtext) roiSubtext.textContent = roi.subtext;
+
+        // ROI panel expanded state
+        const roiExpanded = !!p.roiExpanded;
+        if (roiPanel && roiToggle) {
+          if (roiExpanded) {
+            show(roiPanel);
+            roiToggle.setAttribute('aria-expanded', 'true');
+            roiToggle.querySelector('span:last-child').textContent = 'Hide ▲';
+            // Render chart
+            if (roiChart && window.SighthoundRoiChart) {
+              window.SighthoundRoiChart.render(roiChart, roi);
+            }
+          } else {
+            hide(roiPanel);
+            roiToggle.setAttribute('aria-expanded', 'false');
+            roiToggle.querySelector('span:last-child').textContent = 'Show ▼';
+          }
+        }
+      } else {
+        hide(roiSection);
+      }
+    }
+
+    // Show/hide todaySoftware input based on scenario A and software selected
+    if (todaySoftwareGroup) {
+      const showTodaySoftware = scenario === 'a' && (p.software || 'none') !== 'none';
+      if (showTodaySoftware) {
+        show(todaySoftwareGroup);
+      } else {
+        hide(todaySoftwareGroup);
+      }
+    }
   }
 
   // Helper toggles
@@ -420,6 +474,15 @@
     });
   }
 
+  // ROI toggle -> URL-backed roiExpanded
+  if (roiToggle && roiPanel) {
+    roiToggle.addEventListener('click', () => {
+      const params = state.getParams();
+      const next = params.roiExpanded ? 0 : 1;
+      state.update({ roiExpanded: next });
+    });
+  }
+
   // Reset button
   if (resetCalculatorButton) {
     resetCalculatorButton.addEventListener('click', () => {
@@ -434,15 +497,19 @@
         billing: base.billing || 'monthly',
         expandBreakdown: base.expandBreakdown || 0,
         showAssumptions: base.showAssumptions || 0,
+        todaySoftware: base.todaySoftware || 0,
+        roiExpanded: base.roiExpanded || 0,
       });
       if (cameraTypeExclusivityNote) hide(cameraTypeExclusivityNote);
     });
   }
 
   // Download PDF using shared print template
-  if (downloadPdfButton && window.SighthoundPdf && typeof window.SighthoundPdf.prepareAndPrintPdf === 'function') {
+  if (downloadPdfButton) {
     downloadPdfButton.addEventListener('click', () => {
-      window.SighthoundPdf.prepareAndPrintPdf(state);
+      if (window.SighthoundPdf && typeof window.SighthoundPdf.prepareAndPrintPdf === 'function') {
+        window.SighthoundPdf.prepareAndPrintPdf(state);
+      }
     });
   }
 
@@ -548,6 +615,15 @@
     softwareBillingFrequencySelect.addEventListener('change', () => {
       state.update({ billing: softwareBillingFrequencySelect.value });
     });
+  }
+
+  if (todaySoftwareCostInput) {
+    const handler = () => {
+      const val = todaySoftwareCostInput.value;
+      state.update({ todaySoftware: val === '' ? 0 : val });
+    };
+    todaySoftwareCostInput.addEventListener('input', handler);
+    todaySoftwareCostInput.addEventListener('change', handler);
   }
 
   // Subscribe to state changes and render

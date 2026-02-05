@@ -42,6 +42,17 @@
 
   var expandBreakdownCheckbox = document.getElementById('guidedExpandBreakdown');
 
+  var todaySoftwareInput = document.getElementById('guidedTodaySoftware');
+  var todaySoftwareGroupEl = document.getElementById('guidedTodaySoftwareGroup');
+
+  // ROI elements
+  var roiSectionEl = document.getElementById('guidedRoiSection');
+  var roiToggleEl = document.getElementById('guidedRoiToggle');
+  var roiPanelEl = document.getElementById('guidedRoiPanel');
+  var roiHeadlineEl = document.getElementById('guidedRoiHeadline');
+  var roiSubtextEl = document.getElementById('guidedRoiSubtext');
+  var roiChartEl = document.getElementById('guidedRoiChart');
+
   var prevBtn = document.getElementById('guidedPrev');
   var nextBtn = document.getElementById('guidedNext');
   var seeResultsBtn = document.getElementById('guidedSeeResults');
@@ -256,6 +267,10 @@
       expandBreakdownCheckbox.checked = !!p.expandBreakdown;
     }
 
+    if (todaySoftwareInput) {
+      todaySoftwareInput.value = p.todaySoftware > 0 ? String(p.todaySoftware) : '';
+    }
+
     // Breakdown expanded state
     if (breakdownPanelEl && breakdownToggleEl) {
       var expanded = !!p.expandBreakdown;
@@ -299,6 +314,9 @@
     if (ipCostValue !== undefined) {
       partial.ipCost = ipCostValue;
     }
+
+    var todaySoftwareValue = readNumber(todaySoftwareInput);
+    partial.todaySoftware = todaySoftwareValue !== undefined ? todaySoftwareValue : 0;
 
     var softwareSelection = deriveSoftwareSelectionFromInputs();
     partial.software = softwareSelection;
@@ -487,6 +505,46 @@
     if (softwareBreakdownEl && breakdown.softwareLine) {
       softwareBreakdownEl.textContent = breakdown.softwareLine;
     }
+
+    // ROI Timeline - only for Scenario A with software
+    if (roiSectionEl) {
+      var roi = result.roi;
+      if (roi && roi.applicable) {
+        roiSectionEl.classList.remove('hidden');
+        if (roiHeadlineEl) roiHeadlineEl.textContent = roi.headline;
+        if (roiSubtextEl) roiSubtextEl.textContent = roi.subtext;
+
+        // ROI panel expanded state
+        var roiExpanded = !!p.roiExpanded;
+        if (roiPanelEl && roiToggleEl) {
+          if (roiExpanded) {
+            roiPanelEl.classList.remove('hidden');
+            roiToggleEl.setAttribute('aria-expanded', 'true');
+            roiToggleEl.querySelector('span:last-child').textContent = 'Hide ▲';
+            // Render chart
+            if (roiChartEl && window.SighthoundRoiChart) {
+              window.SighthoundRoiChart.render(roiChartEl, roi);
+            }
+          } else {
+            roiPanelEl.classList.add('hidden');
+            roiToggleEl.setAttribute('aria-expanded', 'false');
+            roiToggleEl.querySelector('span:last-child').textContent = 'Show ▼';
+          }
+        }
+      } else {
+        roiSectionEl.classList.add('hidden');
+      }
+    }
+
+    // Show/hide todaySoftware input based on scenario A and software selected
+    if (todaySoftwareGroupEl) {
+      var showTodaySoftware = scenario === 'a' && p.software !== 'none';
+      if (showTodaySoftware) {
+        todaySoftwareGroupEl.classList.remove('hidden');
+      } else {
+        todaySoftwareGroupEl.classList.add('hidden');
+      }
+    }
   }
 
   // Event wiring
@@ -515,6 +573,10 @@
   if (expandBreakdownCheckbox) {
     expandBreakdownCheckbox.addEventListener('change', handleInputChange);
   }
+  if (todaySoftwareInput) {
+    todaySoftwareInput.addEventListener('input', handleInputChange);
+    todaySoftwareInput.addEventListener('change', handleInputChange);
+  }
 
   if (billingMonthlyBtn) {
     billingMonthlyBtn.addEventListener('click', function () {
@@ -533,6 +595,16 @@
       var next = params.expandBreakdown ? 0 : 1;
       state.update({ expandBreakdown: next });
       // Keep local UI in sync; does not recompute results unless they have already been shown.
+      render(state.getParams());
+    });
+  }
+
+  // ROI toggle
+  if (roiToggleEl && roiPanelEl) {
+    roiToggleEl.addEventListener('click', function () {
+      var params = state.getParams();
+      var next = params.roiExpanded ? 0 : 1;
+      state.update({ roiExpanded: next });
       render(state.getParams());
     });
   }
@@ -607,9 +679,11 @@
     });
   }
 
-  if (downloadPdfBtn && window.SighthoundPdf && typeof window.SighthoundPdf.prepareAndPrintPdf === 'function') {
+  if (downloadPdfBtn) {
     downloadPdfBtn.addEventListener('click', function () {
-      window.SighthoundPdf.prepareAndPrintPdf(state);
+      if (window.SighthoundPdf && typeof window.SighthoundPdf.prepareAndPrintPdf === 'function') {
+        window.SighthoundPdf.prepareAndPrintPdf(state);
+      }
     });
   }
 
@@ -666,6 +740,8 @@
         billing: base.billing || 'monthly',
         expandBreakdown: base.expandBreakdown || 0,
         showAssumptions: base.showAssumptions || 0,
+        todaySoftware: base.todaySoftware || 0,
+        roiExpanded: base.roiExpanded || 0,
       });
       var p = state.getParams();
       hydrateFromParams(p);

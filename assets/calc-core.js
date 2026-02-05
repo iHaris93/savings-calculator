@@ -216,10 +216,101 @@
     };
   }
 
+  /**
+   * Compute ROI timeline data for chart visualization.
+   * Returns break-even month, chart data points, and standardized messages.
+   */
+  function computeRoi(params, hardware, software) {
+    const cameras = hardware.cameras;
+    const todayHardware = hardware.todayTotal;
+    const sighthoundHardware = hardware.sighthoundTotal;
+    const todaySoftwarePerMonth = toNonNegativeNumber(params.todaySoftware, 0) * cameras;
+    const sighthoundSoftwarePerMonth = software.monthlyTotal;
+
+    // Only valid for Scenario A with software selected
+    const isApplicable = hardware.scenario === 'a' && software.selection !== 'none';
+
+    if (!isApplicable || cameras === 0) {
+      return {
+        applicable: false,
+        breakEvenMonth: null,
+        headline: '',
+        subtext: '',
+        dataPoints: [],
+        maxMonths: 60,
+      };
+    }
+
+    // Calculate break-even month
+    // Today: todayHardware + todaySoftwarePerMonth * M
+    // Sighthound: sighthoundHardware + sighthoundSoftwarePerMonth * M
+    // Break-even when: todayHardware + todaySoftware*M = sighthoundHardware + sighthoundSoftware*M
+    // M = (sighthoundHardware - todayHardware) / (todaySoftwarePerMonth - sighthoundSoftwarePerMonth)
+    const softwareDiff = todaySoftwarePerMonth - sighthoundSoftwarePerMonth;
+    const hardwareDiff = sighthoundHardware - todayHardware;
+
+    let breakEvenMonth = null;
+    let headline = '';
+    let subtext = '';
+
+    if (softwareDiff === 0) {
+      // Lines are parallel - compare hardware only
+      if (hardwareDiff <= 0) {
+        headline = 'Lower cost from day one';
+        subtext = 'Total cost is lower immediately and stays lower over time.';
+      } else {
+        headline = 'No break-even within 60 months';
+        subtext = 'Based on your inputs, current setup remains lower cost over this timeframe.';
+      }
+    } else {
+      const m = hardwareDiff / softwareDiff;
+      if (m <= 0) {
+        // Sighthound is cheaper from day one
+        headline = 'Lower cost from day one';
+        subtext = 'Total cost is lower immediately and stays lower over time.';
+      } else if (m > 60) {
+        // Break-even beyond 60 months
+        headline = 'No break-even within 60 months';
+        subtext = 'Based on your inputs, current setup remains lower cost over this timeframe.';
+      } else {
+        breakEvenMonth = Math.ceil(m);
+        headline = 'Break-even in ' + breakEvenMonth + ' months';
+        subtext = "After this point, Sighthound's total cost remains lower over time.";
+      }
+    }
+
+    // Determine max months for chart
+    let maxMonths = 60;
+    if (breakEvenMonth !== null) {
+      maxMonths = Math.max(Math.ceil(breakEvenMonth * 1.5), 24);
+      maxMonths = Math.min(maxMonths, 60);
+    }
+
+    // Generate data points for chart (monthly intervals)
+    const dataPoints = [];
+    for (let m = 0; m <= maxMonths; m += 1) {
+      dataPoints.push({
+        month: m,
+        today: todayHardware + todaySoftwarePerMonth * m,
+        sighthound: sighthoundHardware + sighthoundSoftwarePerMonth * m,
+      });
+    }
+
+    return {
+      applicable: true,
+      breakEvenMonth,
+      headline,
+      subtext,
+      dataPoints,
+      maxMonths,
+    };
+  }
+
   function computeScenarioResults(params) {
     const normalized = params || {};
     const hardware = computeHardware(normalized);
     const software = computeSoftware(normalized, hardware.cameras);
+    const roi = computeRoi(normalized, hardware, software);
 
     const todayLine = (function () {
       const cams = hardware.cameras;
@@ -283,6 +374,8 @@
       cameras: hardware.cameras,
       nodesNeeded: hardware.nodesNeeded,
       hardware: {
+        scenario: hardware.scenario,
+        cameras: hardware.cameras,
         todayTotal: hardware.todayTotal,
         sighthoundTotal: hardware.sighthoundTotal,
         savings: hardware.savings,
@@ -297,6 +390,7 @@
         monthlyTotal: software.monthlyTotal,
         yearlyTotal: software.yearlyTotal,
       },
+      roi,
       breakdown,
       formatters: {
         formatCurrency,
@@ -312,6 +406,7 @@
     calculateNodesNeeded,
     deriveScenario,
     computeScenarioResults,
+    computeRoi,
     formatCurrency,
     formatPercent,
   };

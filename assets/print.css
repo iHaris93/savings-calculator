@@ -25,9 +25,13 @@ body.print-mode main {
   padding: 0 !important;
 }
 
-body.print-mode .max-w-6xl > :not(#pdfRoot),
-body.print-mode .max-w-3xl > :not(#pdfRoot) {
+body.print-mode .max-w-6xl > :not(#pdfRoot):not(#pdfTemplateContainer),
+body.print-mode .max-w-3xl > :not(#pdfRoot):not(#pdfTemplateContainer) {
   display: none !important;
+}
+
+body.print-mode #pdfTemplateContainer {
+  display: block !important;
 }
 
 body.print-mode #pdfRoot {
@@ -91,8 +95,12 @@ body.print-mode #pdfRoot .pdf-section {
   }
 
   /* When printing, hide interactive UI and show only the shared PDF template */
-  .max-w-6xl > :not(#pdfRoot) {
+  .max-w-6xl > :not(#pdfRoot):not(#pdfTemplateContainer) {
     display: none !important;
+  }
+
+  #pdfTemplateContainer {
+    display: block !important;
   }
 
   /* Tighter layout for PDF containers */

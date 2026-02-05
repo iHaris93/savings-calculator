@@ -19,11 +19,18 @@
     var xhr = new XMLHttpRequest();
     xhr.open('GET', 'assets/pdf-template.html', true);
     xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        pdfTemplateHtml = xhr.responseText;
-        pdfTemplateLoaded = true;
-        callback(pdfTemplateHtml);
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          pdfTemplateHtml = xhr.responseText;
+          pdfTemplateLoaded = true;
+          callback(pdfTemplateHtml);
+        } else {
+          callback(null);
+        }
       }
+    };
+    xhr.onerror = function () {
+      callback(null);
     };
     xhr.send();
   }
@@ -195,6 +202,31 @@
     setText('pdfNodesBreakdown', breakdown.nodesLine || '');
     setText('pdfCamerasBreakdown', breakdown.camerasLine || '');
     setText('pdfSoftwareBreakdown', breakdown.softwareLine || '');
+
+    // ROI section (only if roiExpanded is true)
+    var roiSection = targetEl.querySelector('#pdfRoiSection');
+    if (roiSection) {
+      var roiExpanded = params && params.roiExpanded;
+      var roi = result.roi;
+
+      if (roiExpanded && roi && roi.applicable) {
+        roiSection.style.display = 'block';
+        setText('pdfRoiHeadline', roi.headline || '');
+        setText('pdfRoiSubtext', roi.subtext || '');
+
+        // Render chart if available
+        var pdfRoiChart = targetEl.querySelector('#pdfRoiChart');
+        if (pdfRoiChart && typeof window !== 'undefined' && window.SighthoundRoiChart) {
+          // Ensure canvas has dimensions before rendering
+          pdfRoiChart.style.display = 'block';
+          pdfRoiChart.style.width = '100%';
+          pdfRoiChart.style.height = '160px';
+          window.SighthoundRoiChart.render(pdfRoiChart, roi);
+        }
+      } else {
+        roiSection.style.display = 'none';
+      }
+    }
   }
 
   function prepareAndPrintPdf(state) {
@@ -210,7 +242,10 @@
     ensurePdfRoot(function (root) {
       if (!root) return;
       renderPdfFromParams(params, root);
-      window.print();
+      // Small delay to ensure canvas charts render before print
+      setTimeout(function() {
+        window.print();
+      }, 50);
     });
   }
 

@@ -14,10 +14,12 @@
     hasSmartCameras: 0,
     smartCost: 3000,
     ipCost: 250,
+    todaySoftware: 0,
     software: 'none',
     billing: 'monthly',
     expandBreakdown: 0,
     showAssumptions: 0,
+    roiExpanded: 0,
   };
 
   const ORDER = [
@@ -26,10 +28,12 @@
     'hasSmartCameras',
     'smartCost',
     'ipCost',
+    'todaySoftware',
     'software',
     'billing',
     'expandBreakdown',
     'showAssumptions',
+    'roiExpanded',
   ];
 
   function toInt(value, defaultValue, min, max) {
@@ -101,6 +105,7 @@
 
     normalized.smartCost = toNumber(src.smartCost, DEFAULTS.smartCost, 0);
     normalized.ipCost = toNumber(src.ipCost, DEFAULTS.ipCost, 0);
+    normalized.todaySoftware = toNumber(src.todaySoftware, DEFAULTS.todaySoftware, 0);
 
     const softwareRaw = (src.software || DEFAULTS.software).toString().toLowerCase();
     if (softwareRaw === 'none' || softwareRaw === 'lpr' || softwareRaw === 'mmcg' || softwareRaw === 'both') {
@@ -114,6 +119,7 @@
 
     normalized.expandBreakdown = toFlag(src.expandBreakdown, DEFAULTS.expandBreakdown);
     normalized.showAssumptions = toFlag(src.showAssumptions, DEFAULTS.showAssumptions);
+    normalized.roiExpanded = toFlag(src.roiExpanded, DEFAULTS.roiExpanded);
 
     return normalized;
   }
@@ -135,9 +141,16 @@
         key === 'hasExistingCameras' ||
         key === 'hasSmartCameras' ||
         key === 'expandBreakdown' ||
-        key === 'showAssumptions'
+        key === 'showAssumptions' ||
+        key === 'roiExpanded'
       ) {
         if (value === 1) sp.set(key, '1');
+        return;
+      }
+
+      // todaySoftware: only include if > 0
+      if (key === 'todaySoftware') {
+        if (value > 0) sp.set(key, String(value));
         return;
       }
 

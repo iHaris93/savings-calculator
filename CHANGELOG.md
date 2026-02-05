@@ -7,6 +7,14 @@ This project uses date-based entries rather than semantic version numbers. Dates
 ## 2026-02-05
 
 ### Added
+- **ROI Timeline Visualization**: Added cumulative cost comparison chart for Scenario A with software.
+  - New `todaySoftware` URL parameter for user's current camera software cost (optional, per cam/mo).
+  - New `roiExpanded` URL flag to track expandable panel state.
+  - `computeRoi()` in `calc-core.js` calculates break-even month and generates data points.
+  - New `assets/roi-chart.js` renders a two-line canvas chart with Year 1/3/5 markers.
+  - Expandable ROI panel in both Guided and Live modes (below results).
+  - Standardized messages: "Break-even in X months", "Lower cost from day one", "No break-even within 60 months".
+  - PDF export includes ROI section only if the panel was viewed (`roiExpanded=1`).
 - **Headless PDF generation mode**: Added `print=1` query parameter that triggers server-side PDF rendering for Puppeteer/Playwright.
   - New `assets/pdf-headless.js` auto-renders the PDF template when `print=1` is present.
   - Sets `window.__PDF_READY__ = true` when render completes (signal for headless browsers).
@@ -323,13 +331,3 @@ If you have custom scripts or references to warping files, update these paths:
 - Explore new interface guidelines if building CLIs, APIs, or UIs
 - Review enhanced language standards for Python, Go, TypeScript, and C++
 
-<<<<<<< HEAD
-=======
-[0.2.5]: https://github.com/visionik/warping/releases/tag/v0.2.5
-[0.2.4]: https://github.com/visionik/warping/releases/tag/v0.2.4
-[0.2.3]: https://github.com/visionik/warping/releases/tag/v0.2.3
-[0.2.2]: https://github.com/visionik/warping/releases/tag/v0.2.2
-[0.2.1]: https://github.com/visionik/warping/releases/tag/v0.2.1
-[0.2.0]: https://github.com/visionik/warping/releases/tag/v0.2.0
-[0.1.0]: https://github.com/visionik/warping/releases/tag/v0.1.0
->>>>>>> 3bc586e (docs: update CHANGELOG.md and README.md for v0.2.5)
