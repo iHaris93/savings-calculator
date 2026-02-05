@@ -14,17 +14,10 @@
     }
   }
 
-  // Store the latest estimator URL
+  // Store the latest estimator URL (one-time fallback; postMessage is source of truth)
   window.__latestEstimatorUrl = window.location.href;
 
-  // Keep URL in sync
-  setInterval(function () {
-    if (window.location && window.location.href) {
-      window.__latestEstimatorUrl = window.location.href;
-    }
-  }, 500);
-
-  // Listen for postMessage updates
+  // Listen for postMessage updates (primary source of URL)
   window.addEventListener('message', function (e) {
     try {
       var d = e.data;
@@ -45,7 +38,21 @@
    */
   function findField(container) {
     if (!container) return null;
-    return container.querySelector('input[name$="/hardware_estimate_url"]');
+    // Use type="hidden" + namespaced selector for safety
+    return container.querySelector('input[type="hidden"][name$="/hardware_estimate_url"]');
+  }
+
+  /**
+   * Hard-set field value + dispatch events to update HubSpot's internal model.
+   */
+  function hardSetField(f, v) {
+    if (!f) return false;
+    f.value = v;
+    f.defaultValue = v;
+    f.setAttribute('value', v);
+    try { f.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+    try { f.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+    return true;
   }
 
   /**
@@ -62,15 +69,9 @@
       log('setFieldValue: no URL');
       return false;
     }
-    // Set in multiple ways for persistence
-    f.value = v;
-    f.defaultValue = v;
-    f.setAttribute('value', v);
-    // Dispatch events
-    f.dispatchEvent(new Event('input', { bubbles: true }));
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-    log('setFieldValue: SUCCESS -', f.name, '=', v);
-    return true;
+    var ok = hardSetField(f, v);
+    log('setFieldValue:', ok ? 'SUCCESS' : 'FAIL', f.name, '=', v);
+    return ok;
   }
 
   /**
@@ -117,34 +118,63 @@
   }
 
   /**
-   * Attach capture-phase submit listener to inject value right before submit.
+   * Attach pre-submit guards: click, keydown Enter, submit (all capture phase).
+   * Inject URL earlier than submit to give HubSpot time to update internal model.
    */
-  function attachSubmitListener() {
+  function attachPreSubmitGuards() {
     if (submitListenerAttached) return;
     submitListenerAttached = true;
 
-    document.addEventListener('submit', function (e) {
+    function injectNow(reason) {
+      var wrap = document.getElementById('hsEmailWrap');
+      if (!wrap) return;
+      var f = findField(wrap);
+      var v = window.__latestEstimatorUrl || '';
+      if (!f || !v) {
+        log(reason + ': cannot inject - field:', !!f, 'url:', !!v);
+        return;
+      }
+
+      log(reason + ': injecting URL into', f.name);
+      log(reason + ': before =', f.value);
+      hardSetField(f, v);
+      log(reason + ': after  =', f.value);
+      updateDebugFields(reason + ': injected');
+    }
+
+    // 1) Click on submit button (capture) - fires before HubSpot processes
+    document.addEventListener('click', function (e) {
       var wrap = document.getElementById('hsEmailWrap');
       if (!wrap) return;
       if (!wrap.contains(e.target)) return;
 
-      log('SUBMIT captured - injecting URL');
-      var f = findField(wrap);
-      if (f) {
-        var v = window.__latestEstimatorUrl || '';
-        log('SUBMIT: field before:', f.name, '=', f.value);
-        f.value = v;
-        f.defaultValue = v;
-        f.setAttribute('value', v);
-        log('SUBMIT: field after:', f.name, '=', f.value);
-        updateDebugFields('SUBMIT: Injected!');
-      } else {
-        log('SUBMIT: field not found!');
-        updateDebugFields('SUBMIT: No field!');
-      }
-    }, true); // capture phase
+      // HubSpot submit can be <input type="submit"> or <button type="submit">
+      var t = e.target;
+      var isSubmit =
+        (t.tagName === 'INPUT' && (t.type || '').toLowerCase() === 'submit') ||
+        (t.tagName === 'BUTTON' && ((t.type || 'submit').toLowerCase() === 'submit'));
 
-    log('Submit listener attached (capture phase)');
+      if (isSubmit) injectNow('CLICK');
+    }, true);
+
+    // 2) Enter key submits (capture)
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var wrap = document.getElementById('hsEmailWrap');
+      if (!wrap) return;
+      if (!wrap.contains(e.target)) return;
+      injectNow('ENTER');
+    }, true);
+
+    // 3) Submit (capture) as last safety net
+    document.addEventListener('submit', function (e) {
+      var wrap = document.getElementById('hsEmailWrap');
+      if (!wrap) return;
+      if (!wrap.contains(e.target)) return;
+      injectNow('SUBMIT');
+    }, true);
+
+    log('Pre-submit guards attached (click/enter/submit capture)');
   }
 
   /**
@@ -191,8 +221,8 @@
     log('Form HTML injected, waiting for HubSpot to render...');
     updateDebugFields('Form injected, rendering...');
 
-    // Attach submit listener
-    attachSubmitListener();
+    // Attach pre-submit guards (click/enter/submit capture)
+    attachPreSubmitGuards();
 
     // Start retry loop to set field once form renders
     setTimeout(function () {
