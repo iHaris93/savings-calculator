@@ -44,6 +44,69 @@
 
       .print-only {
       }
+
+      /* HubSpot form styling */
+      #hsEmailWrap {
+        margin-top: 1rem;
+      }
+      #hsEmailWrap .hs-form-html form {
+        font-family: var(--font-body);
+      }
+      #hsEmailWrap .hs-form-html input[type="text"],
+      #hsEmailWrap .hs-form-html input[type="email"],
+      #hsEmailWrap .hs-form-html input[type="tel"],
+      #hsEmailWrap .hs-form-html textarea,
+      #hsEmailWrap .hs-form-html select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #cbd5e1;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.75rem;
+      }
+      #hsEmailWrap .hs-form-html input:focus,
+      #hsEmailWrap .hs-form-html textarea:focus,
+      #hsEmailWrap .hs-form-html select:focus {
+        outline: none;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 1px #0ea5e9;
+      }
+      #hsEmailWrap .hs-form-html label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #334155;
+      }
+      #hsEmailWrap .hs-form-html input[type="submit"],
+      #hsEmailWrap .hs-form-html button[type="submit"] {
+        background-color: #4f60dc;
+        border: 1px solid #4f60dc;
+        color: #ffffff;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      #hsEmailWrap .hs-form-html input[type="submit"]:hover,
+      #hsEmailWrap .hs-form-html button[type="submit"]:hover {
+        background-color: #3d4cb8;
+        border-color: #3d4cb8;
+      }
+      #hsEmailWrap .hs-form-html .hs-error-msgs {
+        color: #dc2626;
+        font-size: 0.75rem;
+        margin-top: -0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      #hsEmailWrap .hs-form-html .submitted-message {
+        color: #059669;
+        font-size: 0.875rem;
+        padding: 1rem;
+        background: #ecfdf5;
+        border-radius: 0.5rem;
+      }
     </style>
   </head>
   <body class="min-h-screen bg-white text-slate-900 antialiased" data-mode="live">
@@ -808,6 +871,14 @@
                     >
                       Download estimate as PDF
                     </button>
+                    <button
+                      id="emailPdfButton"
+                      type="button"
+                      onclick="window.showHsEmailForm && window.showHsEmailForm()"
+                      class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"
+                    >
+                      Email PDF copy
+                    </button>
                     <a
                       id="contactCtaLink"
                       href="https://www.sighthound.com/contact-us"
@@ -834,6 +905,20 @@
                     />
                   </div>
                 </aside>
+
+                <!-- HubSpot Email Form (hidden by default) -->
+                <section
+                  id="hsEmailWrap"
+                  class="hidden mt-4 rounded-xl shadow-sm border border-slate-200 bg-white p-5 sm:p-6 dark:border-slate-700 dark:bg-slate-900 no-print"
+                >
+                  <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-50 mb-2">
+                    Email your estimate
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Fill in your details below and we'll send a copy of this estimate to your inbox.
+                  </p>
+                  <!-- HubSpot form will be dynamically injected here -->
+                </section>
               </div>
             </section>
           </div>
@@ -997,6 +1082,7 @@
     <script src="assets/calc-core.js"></script>
     <script src="assets/pdf-render.js"></script>
     <script src="assets/mode-switch.js"></script>
+    <script src="assets/hs-email.js"></script>
     <script src="script.js"></script>
     <script>
       // TEMP: keep the live mode debug URL field in sync with the canonical URL.
