@@ -1,12 +1,24 @@
 /**
  * HubSpot Email PDF Form Integration
- * Uses custom form + direct HubSpot Forms API submission.
- * Bypasses HubSpot's cross-origin iframe completely.
+ * 
+ * IMPORTANT: We intentionally do NOT use HubSpot embedded forms here.
+ * All submissions go through the HubSpot Forms v3 API directly.
+ * 
+ * Why?
+ * - HubSpot's developer embed creates a cross-origin iframe
+ * - We cannot access iframe DOM to inject the hardware_estimate_url
+ * - HubSpot's internal React state ignores our DOM changes
+ * - The embedded form's hidden field value was always cleared on submit
+ * 
+ * This direct API approach gives us full control over the payload,
+ * guaranteeing the hardware_estimate_url is always submitted correctly.
+ * 
+ * DO NOT re-introduce HubSpot embeds without understanding these issues.
  */
 (function () {
   'use strict';
 
-  var DEBUG = true;
+  var DEBUG = false; // Set to true for console logging during development
   var PORTAL_ID = '3983149';
   var FORM_ID = 'a2c21e81-1915-4b3d-a858-9aadfe08b542';
 
@@ -194,7 +206,7 @@
           updateDebugFields('ERROR: ' + errMsg);
         } else {
           log('Submission success');
-          showMessage('Thank you! Your estimate has been sent to your email.', 'success');
+          showMessage('Thanks — we\'ll email your estimate shortly.', 'success');
           form.reset();
           // Re-set the URL field for next submission
           if (urlInput) urlInput.value = window.__latestEstimatorUrl || '';

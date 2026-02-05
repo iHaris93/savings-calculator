@@ -968,10 +968,11 @@
                     />
                   </div>
 
-                  <!-- HubSpot Debug (shown when Email PDF copy is clicked) -->
+                  <!-- HubSpot Debug (dev only - remove or keep hidden for production) -->
                   <div
                     id="hsDebugSection"
                     class="hidden mt-3 p-3 rounded-lg border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600"
+                    style="display: none;"
                   >
                     <p class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-2">
                       HubSpot Debug – Estimator URL Injection:
@@ -1165,6 +1166,7 @@
     <script src="assets/state-sync.js"></script>
     <script src="assets/calc-core.js"></script>
     <script src="assets/pdf-render.js"></script>
+    <script src="assets/pdf-headless.js"></script>
     <script src="assets/mode-switch.js"></script>
     <script src="assets/hs-email.js"></script>
     <script src="script.js"></script>

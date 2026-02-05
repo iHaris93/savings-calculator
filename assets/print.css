@@ -5,9 +5,61 @@
   display: none;
 }
 
+/* Headless PDF mode: when print=1, render PDF template on-screen for capture */
+body.print-mode {
+  background: #ffffff;
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 0.5in;
+}
+
+body.print-mode .no-print {
+  display: none !important;
+}
+
+body.print-mode .print-only {
+  display: block !important;
+}
+
+body.print-mode main {
+  padding: 0 !important;
+}
+
+body.print-mode .max-w-6xl > :not(#pdfRoot),
+body.print-mode .max-w-3xl > :not(#pdfRoot) {
+  display: none !important;
+}
+
+body.print-mode #pdfRoot {
+  display: block !important;
+  max-width: 7.5in;
+}
+
+body.print-mode #pdfRoot .pdf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+body.print-mode #pdfRoot .pdf-card {
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+}
+
+body.print-mode #pdfRoot .pdf-meta {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+body.print-mode #pdfRoot .pdf-section {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 @media print {
   @page {
-    size: auto;
+    size: Letter;
     margin: 0.5in;
   }
 

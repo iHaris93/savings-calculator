@@ -56,3 +56,8 @@ core/user.md
 
 # Environment
 .env
+
+# PDF generation output
+out/
+scripts/out/
+scripts/node_modules/

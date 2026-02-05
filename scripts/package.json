@@ -1,0 +1,14 @@
+{
+  "name": "savings-calculator-scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "PDF generation scripts for savings calculator",
+  "scripts": {
+    "pdf": "node generate-pdf.js",
+    "pdf:a4": "PDF_FORMAT=A4 node generate-pdf.js",
+    "pdf:letter": "PDF_FORMAT=Letter node generate-pdf.js"
+  },
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  }
+}

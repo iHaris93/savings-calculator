@@ -560,9 +560,68 @@ Squarespace embed example:
 
 - In Squarespace, add a **Code** block and paste the `<iframe>` snippet.
 - If you change the GitHub Pages settings or repository name, update the `src` URL to match.
+
+---
+
+## Headless PDF generation
+
+The calculator supports server-side PDF generation via headless browsers (Puppeteer, Playwright, etc.).
+
+### How it works
+
+1. Append `print=1` to any calculator URL:
+   ```
+   live.html?cameras=50&hasSmartCameras=1&software=both&billing=yearly&expandBreakdown=1&print=1
+   ```
+
+2. The page auto-renders the PDF template and sets `window.__PDF_READY__ = true`.
+
+3. A headless browser waits for this signal, then calls `page.pdf()` to generate the PDF.
+
+### Using the Puppeteer script
+
+```bash
+# Install dependencies
+cd scripts && npm install
+
+# Generate PDF (Letter format, default)
+npm run pdf -- "http://localhost:8080/live.html?cameras=50&hasSmartCameras=1&software=both" "./out/estimate.pdf"
+
+# Generate PDF (A4 format)
+npm run pdf:a4 -- "http://localhost:8080/live.html?cameras=50&hasSmartCameras=1&software=both" "./out/estimate-a4.pdf"
+```
+
+### Error handling
+
+The headless mode sets these flags for debugging:
+
+- `window.__PDF_READY__` – `true` on success, `false` on error
+- `window.__PDF_ERROR__` – error code (e.g., `pdfRoot_not_found`, `renderer_not_available`)
+- `window.__PDF_ERROR_DETAIL__` – detailed error message or stack trace
+
+The Puppeteer script waits for either `__PDF_READY__ === true` or `!!__PDF_ERROR__`, so errors surface immediately instead of timing out.
+
+### Integration with HubSpot
+
+The calculator includes a HubSpot email form ("Email PDF copy" CTA) that captures the current estimator URL. For automated PDF delivery:
+
+1. HubSpot form submission writes `estimate_url` to the contact.
+2. A webhook calls your backend with the estimate URL.
+3. Backend runs the Puppeteer script to generate the PDF.
+4. PDF is uploaded to storage (S3, R2, etc.) and `pdf_url` is written back to HubSpot.
+5. HubSpot sends an email with the PDF download link.
+
+---
+
 ## 11) Changelog
 
 For a complete history of changes, see `CHANGELOG.md`.
+
+- **2026-02-05**
+  - Added headless PDF generation mode (`print=1` query parameter) for server-side PDF rendering with Puppeteer.
+  - Added `scripts/generate-pdf.js` with npm scripts (`npm run pdf`, `npm run pdf:a4`) for automated PDF generation.
+  - Added HubSpot email form integration ("Email PDF copy" CTA) that captures the current estimator URL.
+  - Improved error handling with `__PDF_ERROR__` and `__PDF_ERROR_DETAIL__` flags for fast debugging.
 
 - **2026-01-22**
   - Added visual emphasis to the Scenario A savings card using green/red styling while keeping underlying math unchanged.

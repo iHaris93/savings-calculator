@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 
 This project uses date-based entries rather than semantic version numbers. Dates are in UTC.
 
+## 2026-02-05
+
+### Added
+- **Headless PDF generation mode**: Added `print=1` query parameter that triggers server-side PDF rendering for Puppeteer/Playwright.
+  - New `assets/pdf-headless.js` auto-renders the PDF template when `print=1` is present.
+  - Sets `window.__PDF_READY__ = true` when render completes (signal for headless browsers).
+  - Sets `window.__PDF_ERROR__` and `window.__PDF_ERROR_DETAIL__` on failure for fast debugging.
+  - Applies `body.print-mode` CSS class to show PDF template and hide interactive UI.
+- **Puppeteer PDF generation script**: Added `scripts/generate-pdf.js` for server-side PDF generation.
+  - Usage: `npm run pdf -- "<URL>" "./out/estimate.pdf"`
+  - Supports Letter (default) and A4 formats via `PDF_FORMAT` env var.
+  - Waits for `__PDF_READY__` or `__PDF_ERROR__` (fails fast with meaningful messages).
+  - Includes font loading wait to prevent layout shifts.
+- **HubSpot email form integration**: Added custom form that submits directly to HubSpot Forms v3 API.
+  - "Email PDF copy" CTA button in both Guided and Live modes.
+  - Captures `hardware_estimate_url` hidden field with current estimator URL.
+  - Bypasses HubSpot's cross-origin iframe limitations.
+
+### Changed
+- Updated `@page` CSS rule from `size: auto` to `size: Letter` for deterministic PDF output.
+- Added `body.print-mode` styles in `assets/print.css` for headless rendering (non-print media).
+
+### Infrastructure
+- Added `scripts/` directory with `package.json` for PDF generation tooling.
+- Added `out/`, `scripts/out/`, and `scripts/node_modules/` to `.gitignore`.
+
 ## 2026-01-26
 
 ### Changed
